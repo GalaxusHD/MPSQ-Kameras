@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "mpsqcamera",
+  "version": "${version}",
+  "name": "MPSQ Kameras",
+  "description": "Client-side screen creation framework mod.",
+  "authors": [
+    "GalaxusHD"
+  ],
+  "contact": {
+    "homepage": "https://github.com/GalaxusHD/MPSQ-Kameras",
+    "sources": "https://github.com/GalaxusHD/MPSQ-Kameras"
+  },
+  "license": "LGPL-2.1-or-later",
+  "icon": "assets/mpsqcamera/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "de.galaxushd.mpsqcamera.MpsqCameraClient"
+    ]
+  },
+  "mixins": [
+    "mpsqcamera.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.17.3",
+    "minecraft": "~1.21.8",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
