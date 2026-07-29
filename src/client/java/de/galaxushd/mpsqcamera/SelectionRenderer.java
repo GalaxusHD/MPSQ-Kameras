@@ -5,7 +5,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.WorldRenderer;
+import net.minecraft.client.render.VertexRendering;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -53,7 +53,7 @@ public final class SelectionRenderer {
 
         VertexConsumer vc = consumers.getBuffer(RenderLayer.getLines());
         // Roter Wireframe-Rahmen (R=1.0, G=0.0, B=0.0, A=0.8)
-        WorldRenderer.drawBox(matrices, vc, x1, y1, z1, x2, y2, z2,
+        VertexRendering.drawBox(matrices, vc, x1, y1, z1, x2, y2, z2,
                 1.0f, 0.0f, 0.0f, 0.8f);
 
         matrices.pop();
