@@ -136,7 +136,7 @@ public class ScreenConfigScreen extends Screen {
 		context.drawCenteredTextWithShadow(this.textRenderer, this.title,
 				this.width / 2, this.height / 2 - 86, 0xFFFFFF);
 		context.drawCenteredTextWithShadow(this.textRenderer,
-				Text.literal("Anker: " + target.anchor().toShortString()),
+				Text.literal("Anker: " + target.pos1().toShortString()),
 				this.width / 2, this.height / 2 - 74, 0xAAAAAA);
 	}
 

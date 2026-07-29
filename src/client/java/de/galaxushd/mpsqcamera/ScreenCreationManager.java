@@ -115,7 +115,7 @@ public final class ScreenCreationManager {
 			}
 		}
 
-		// O => Konfig für nächsten Bildschirm öffnen
+		// O → Konfig für nächsten Bildschirm öffnen
 		while (bildschirmConfigKey.wasPressed()) {
 			openNearestScreenConfig(client, player);
 		}
@@ -313,23 +313,38 @@ public final class ScreenCreationManager {
 			return;
 		}
 
-		BlockHitResult hit = (BlockHitResult) client.crosshairTarget;
-		BlockPos targetPos = hit.getBlockPos();
-		BlockState state   = client.world.getBlockState(targetPos);
+		BlockHitResult hit    = (BlockHitResult) client.crosshairTarget;
+		BlockPos       target = hit.getBlockPos();
+		BlockState     state  = client.world.getBlockState(target);
 
 		if (state.isAir()) {
-			MpsqCameraClient.LOGGER.info("[MPSQ Kameras] Zielblock ist Luft.");
+			player.sendMessage(
+					Text.translatable("gui.mpsqcamera.auswahl.luft"), true);
 			return;
 		}
 
-		LocalScreenStore.addScreen(targetPos, player.getPos());
-		MpsqCameraClient.LOGGER.info("[MPSQ Kameras] Bildschirm erstellt bei {}", targetPos);
+		if (selectionPos1 == null) {
+			// ── Erster Klick: Startpunkt markieren ───────────────────────────
+			selectionPos1 = target.toImmutable();
+			player.sendMessage(
+					Text.translatable("gui.mpsqcamera.auswahl.pos1_gesetzt"), true);
+			MpsqCameraClient.LOGGER.info("[MPSQ Kameras] Pos 1 markiert: {}", selectionPos1);
+		} else {
+			// ── Zweiter Klick: Endpunkt → automatisch bestätigen & Menü öffnen
+			BlockPos pos1 = selectionPos1;
+			BlockPos pos2 = target.toImmutable();
+			selectionPos1 = null; // Auswahl-Modus beenden
+
+			MpsqCameraClient.LOGGER.info("[MPSQ Kameras] Pos 2 markiert: {} → Erstell-Menü öffnen", pos2);
+			client.setScreen(new BildschirmErstellenScreen(pos1, pos2));
+		}
 	}
 
 	private static void openNearestScreenConfig(MinecraftClient client, ClientPlayerEntity player) {
 		LocalScreenStore.findNearest(player.getPos(), 8.0).ifPresentOrElse(
 				screen -> client.setScreen(new ScreenConfigScreen(screen)),
-				() -> MpsqCameraClient.LOGGER.info("[MPSQ Kameras] Kein Bildschirm in der Nähe zum Konfigurieren.")
+				() -> MpsqCameraClient.LOGGER.info(
+						"[MPSQ Kameras] Kein Bildschirm in der Nähe zum Konfigurieren.")
 		);
 	}
 

@@ -6,9 +6,7 @@
 
   "gui.mpsqcamera.hauptmenu.titel":                  "MPSQ Kameras",
   "gui.mpsqcamera.hauptmenu.logo_platzhalter":        "[ Logo ]",
-  "gui.mpsqcamera.hauptmenu.zugangscode":             "Zugangscode",
-  "gui.mpsqcamera.hauptmenu.zugangscode.hinweis":     "Code hier eingeben…",
-  "gui.mpsqcamera.hauptmenu.bildschirm_erstellen":    "Bildschirm erstellen",
+  "gui.mpsqcamera.hauptmenu.bildschirme":             "Bildschirme",
   "gui.mpsqcamera.hauptmenu.einstellungen":           "Einstellungen",
   "gui.mpsqcamera.hauptmenu.lizenz":                  "Lizenz",
 
@@ -22,3 +20,4 @@
   "status.mpsqcamera.view_exit":                      "Kameraansicht beendet",
   "status.mpsqcamera.camera_offline":                 "Kamera derzeit nicht geladen"
 }
+
