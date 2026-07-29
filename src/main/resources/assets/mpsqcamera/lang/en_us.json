@@ -1,4 +1,21 @@
 {
-  "key.mpsqcamera.open_creator": "Open Screen Creator",
-  "category.mpsqcamera.main": "MPSQ Kameras"
+  "category.mpsqcamera.main": "MPSQ Kameras",
+
+  "key.mpsqcamera.hauptmenu":           "Open Main Menu",
+  "key.mpsqcamera.bildschirm_config":   "Configure Screen",
+
+  "gui.mpsqcamera.hauptmenu.titel":                  "MPSQ Kameras",
+  "gui.mpsqcamera.hauptmenu.logo_platzhalter":        "[ Logo ]",
+  "gui.mpsqcamera.hauptmenu.zugangscode":             "Access Code",
+  "gui.mpsqcamera.hauptmenu.zugangscode.hinweis":     "Enter code here…",
+  "gui.mpsqcamera.hauptmenu.bildschirm_erstellen":    "Create Screen",
+  "gui.mpsqcamera.hauptmenu.einstellungen":           "Settings",
+  "gui.mpsqcamera.hauptmenu.lizenz":                  "License",
+
+  "gui.mpsqcamera.bildschirmconfig.titel":            "Configure Screen",
+  "gui.mpsqcamera.bildschirmconfig.eingabemodus":     "Input Mode",
+  "gui.mpsqcamera.bildschirmconfig.url":              "URL",
+  "gui.mpsqcamera.bildschirmconfig.speichern":        "Save",
+  "gui.mpsqcamera.bildschirmconfig.schliessen":       "Close"
 }
+
