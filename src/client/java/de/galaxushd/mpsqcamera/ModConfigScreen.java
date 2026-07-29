@@ -114,8 +114,6 @@ public class ModConfigScreen extends Screen {
 
 	@Override
 	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-		renderBackground(context, mouseX, mouseY, delta);
-
 		int cx      = this.width / 2;
 		int logoTop = this.height / 4 - LOGO_H / 2;
 		int logoX   = cx - LOGO_W / 2;
