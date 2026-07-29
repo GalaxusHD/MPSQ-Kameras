@@ -13,7 +13,7 @@ import net.minecraft.text.Text;
  *  │         [LOGO oben-mitte]          │  ← TODO: echtes Logo-Texture
  *  │         MPSQ Kameras               │
  *  │  ╔══════════════════════════╗      │
- *  │  ║  [ Bildschirme        ] ║      │  ← Haupt-Button (Stub, folgt)
+ *  │  ║  [ Bildschirme        ] ║      │  ← Haupt-Button (funktionsfähig)
  *  │  ║  [ Einstellungen      ] ║      │
  *  │  ╚══════════════════════════╝      │
  *  │ [Lizenz]                           │  ← Unten-links
@@ -36,7 +36,7 @@ public class ModConfigScreen extends Screen {
 		// Buttons in der unteren Hälfte des Bildschirms
 		int btnY = this.height / 2 + 8;
 
-		// "Bildschirme" – Haupt-Button (Funktion folgt später)
+		// "Bildschirme" – Haupt-Button (öffnet BildschirmListScreen)
 		addDrawableChild(ButtonWidget.builder(
 				Text.translatable("gui.mpsqcamera.hauptmenu.bildschirme"),
 				b -> onBildschirme()
@@ -55,11 +55,11 @@ public class ModConfigScreen extends Screen {
 		).dimensions(6, this.height - 26, 60, 20).build());
 	}
 
-	// ── Aktionen ─────────────────────────────────────────────────────────────
+	// ── Aktionen ──────────────────────────────────────────────────────────────
 
 	private void onBildschirme() {
-		// TODO: Bildschirm-Verwaltungs-Screen öffnen
-		MpsqCameraClient.LOGGER.info("[MPSQ Kameras] Bildschirme (folgt in einer späteren Version).");
+		// Öffne die Bildschirm-Liste
+		this.client.setScreen(new BildschirmListScreen(this));
 	}
 
 	private void onEinstellungen() {
@@ -70,7 +70,7 @@ public class ModConfigScreen extends Screen {
 		this.client.setScreen(new LizenzScreen(this));
 	}
 
-	// ── Rendering ─────────────────────────────────────────────────────────────
+	// ── Rendering ──────────────────────────────────────────────────────────────
 
 	@Override
 	public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
