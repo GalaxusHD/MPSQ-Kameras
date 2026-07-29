@@ -10,36 +10,14 @@
   "gui.mpsqcamera.hauptmenu.einstellungen":           "Einstellungen",
   "gui.mpsqcamera.hauptmenu.lizenz":                  "Lizenz",
 
-  "gui.mpsqcamera.lizenz.titel":                     "Lizenz",
-  "gui.mpsqcamera.lizenz.zurueck":                   "← Zurück",
+  "gui.mpsqcamera.bildschirmconfig.titel":            "Bildschirm konfigurieren",
+  "gui.mpsqcamera.bildschirmconfig.eingabemodus":     "Eingabemodus",
+  "gui.mpsqcamera.bildschirmconfig.url":              "URL",
+  "gui.mpsqcamera.bildschirmconfig.speichern":        "Speichern",
+  "gui.mpsqcamera.bildschirmconfig.schliessen":       "Schließen",
 
-  "gui.mpsqcamera.einstellungen.titel":              "Einstellungen",
-  "gui.mpsqcamera.einstellungen.item_label":         "Aktivierungs-Item (Item-ID):",
-  "gui.mpsqcamera.einstellungen.item":               "Item-ID",
-  "gui.mpsqcamera.einstellungen.item_reset":         "Reset",
-  "gui.mpsqcamera.einstellungen.tasten_label":       "Tasten-Belegung:",
-  "gui.mpsqcamera.einstellungen.tasten":             "Steuerung öffnen",
-  "gui.mpsqcamera.einstellungen.lautstaerke_label":  "Lautstärke:",
-  "gui.mpsqcamera.einstellungen.schliessen":         "Übernehmen & Schließen",
-
-  "gui.mpsqcamera.erstellen.titel":                  "Bildschirm erstellen",
-  "gui.mpsqcamera.erstellen.name":                   "Name",
-  "gui.mpsqcamera.erstellen.name.hinweis":           "Name eingeben…",
-  "gui.mpsqcamera.erstellen.ausrichtung":            "Ausrichtung",
-  "gui.mpsqcamera.erstellen.modus":                  "Eingabemodus",
-  "gui.mpsqcamera.erstellen.url":                    "URL",
-  "gui.mpsqcamera.erstellen.erstellen":              "Erstellen",
-  "gui.mpsqcamera.erstellen.abbrechen":              "Abbrechen",
-
-  "gui.mpsqcamera.auswahl.pos1_gesetzt":             "✔ Pos 1 markiert – jetzt Pos 2 anklicken",
-  "gui.mpsqcamera.auswahl.abgebrochen":              "✘ Auswahl abgebrochen",
-  "gui.mpsqcamera.auswahl.kein_block":               "✘ Kein Block anvisiert",
-  "gui.mpsqcamera.auswahl.luft":                     "✘ Zielblock ist Luft",
-
-  "gui.mpsqcamera.bildschirmconfig.titel":           "Bildschirm konfigurieren",
-  "gui.mpsqcamera.bildschirmconfig.eingabemodus":    "Eingabemodus",
-  "gui.mpsqcamera.bildschirmconfig.url":             "URL",
-  "gui.mpsqcamera.bildschirmconfig.speichern":       "Speichern",
-  "gui.mpsqcamera.bildschirmconfig.schliessen":      "Schließen"
+  "status.mpsqcamera.view_enter":                     "Kameraansicht aktiv (ESC zum Beenden)",
+  "status.mpsqcamera.view_exit":                      "Kameraansicht beendet",
+  "status.mpsqcamera.camera_offline":                 "Kamera derzeit nicht geladen"
 }
 

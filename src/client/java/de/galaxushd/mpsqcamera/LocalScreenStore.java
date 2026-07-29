@@ -54,9 +54,20 @@ public final class LocalScreenStore {
 		return result;
 	}
 
+	public static List<LocalScreenData> getAllScreens() {
+		return List.copyOf(SCREENS);
+	}
+
 	public static Optional<LocalScreenData> findByAnchor(BlockPos anchor) {
 		for (LocalScreenData s : SCREENS) {
 			if (s.pos1().equals(anchor)) return Optional.of(s);
+		}
+		return Optional.empty();
+	}
+
+	public static Optional<LocalScreenData> findById(UUID id) {
+		for (LocalScreenData s : SCREENS) {
+			if (s.id().equals(id)) return Optional.of(s);
 		}
 		return Optional.empty();
 	}

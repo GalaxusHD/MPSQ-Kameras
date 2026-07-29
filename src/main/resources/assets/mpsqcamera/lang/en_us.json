@@ -6,6 +6,17 @@
 
   "gui.mpsqcamera.hauptmenu.titel":                  "MPSQ Kameras",
   "gui.mpsqcamera.hauptmenu.logo_platzhalter":        "[ Logo ]",
+  "gui.mpsqcamera.hauptmenu.zugangscode":             "Access Code",
+  "gui.mpsqcamera.hauptmenu.zugangscode.hinweis":     "Enter code here…",
+  "gui.mpsqcamera.hauptmenu.bildschirm_erstellen":    "Create Screen",
+  "gui.mpsqcamera.hauptmenu.einstellungen":           "Settings",
+  "gui.mpsqcamera.hauptmenu.lizenz":                  "License",
+
+  "gui.mpsqcamera.bildschirmconfig.titel":            "Configure Screen",
+  "gui.mpsqcamera.bildschirmconfig.eingabemodus":     "Input Mode",
+  "gui.mpsqcamera.bildschirmconfig.url":              "URL",
+  "gui.mpsqcamera.bildschirmconfig.speichern":        "Save",
+  "gui.mpsqcamera.bildschirmconfig.schliessen":       "Close",
   "gui.mpsqcamera.hauptmenu.bildschirme":             "Bildschirme",
   "gui.mpsqcamera.hauptmenu.einstellungen":           "Einstellungen",
   "gui.mpsqcamera.hauptmenu.lizenz":                  "Lizenz",
@@ -43,3 +54,7 @@
   "gui.mpsqcamera.bildschirmconfig.schliessen":      "Close"
 }
 
+  "status.mpsqcamera.view_enter":                     "Camera view active (ESC to exit)",
+  "status.mpsqcamera.view_exit":                      "Camera view ended",
+  "status.mpsqcamera.camera_offline":                 "Camera is currently not loaded"
+}
