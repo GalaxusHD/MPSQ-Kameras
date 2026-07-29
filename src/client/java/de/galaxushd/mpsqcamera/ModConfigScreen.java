@@ -44,7 +44,7 @@ public class ModConfigScreen extends Screen {
 		codeInputField = new TextFieldWidget(this.textRenderer, cx - CODE_INPUT_W / 2, this.height / 2 - 50, CODE_INPUT_W, CODE_INPUT_H, Text.literal("Code"));
 		codeInputField.setPlaceholder(Text.literal("Aktivierungscode eingeben..."));
 		codeInputField.setMaxLength(20);
-		addRenderableWidget(codeInputField);
+		addDrawableChild(codeInputField);
 		
 		// Code-Submit-Button (neben Input)
 		addDrawableChild(ButtonWidget.builder(

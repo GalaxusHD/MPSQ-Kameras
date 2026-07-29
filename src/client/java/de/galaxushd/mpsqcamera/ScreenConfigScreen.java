@@ -61,7 +61,7 @@ public class ScreenConfigScreen extends Screen {
 			if (!screen.id().equals(target.id())) {
 				kameraAuswahl.add(new CameraChoice(
 						screen.id(),
-						"Kamera @ " + screen.anchor().toShortString()
+						"Kamera @ " + screen.pos1().toShortString()
 				));
 			}
 		}

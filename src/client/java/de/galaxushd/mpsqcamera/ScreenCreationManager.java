@@ -33,6 +33,7 @@ public final class ScreenCreationManager {
 	private static boolean wasAttackPressedLastTick = false;
 	private static boolean wasUsePressedLastTick = false;
 	private static boolean wasEscPressedLastTick = false;
+	private static BlockPos selectionPos1;
 	private static long lastViewEnterAttemptMs = 0L;
 	private static long lastOfflineHintMs = 0L;
 
@@ -185,7 +186,7 @@ public final class ScreenCreationManager {
 		Perspective previousPerspective = client.options.getPerspective();
 
 		activeViewSession = new ViewSession(
-				screen.anchor().toImmutable(),
+				screen.pos1().toImmutable(),
 				screen.cameraId(),
 				player.getPos(),
 				client.world.getRegistryKey(),
@@ -228,12 +229,12 @@ public final class ScreenCreationManager {
 
 		LocalScreenStore.LocalScreenData sourceScreen = LocalScreenStore.findByAnchor(session.sourceAnchor()).orElse(null);
 		if (sourceScreen == null) return false;
-		if (client.world.getBlockState(sourceScreen.anchor()).isAir()) return false;
+		if (client.world.getBlockState(sourceScreen.pos1()).isAir()) return false;
 		if (sourceScreen.inputType() != LocalScreenStore.ScreenInputType.CAMERA || sourceScreen.cameraId() == null) return false;
 
 		LocalScreenStore.LocalScreenData cameraScreen = LocalScreenStore.findById(session.cameraId()).orElse(null);
 		if (cameraScreen == null) return false;
-		if (client.world.getBlockState(cameraScreen.anchor()).isAir()) return false;
+		if (client.world.getBlockState(cameraScreen.pos1()).isAir()) return false;
 
 		Vec3d cameraPos = toCameraPos(cameraScreen.createdFrom());
 		session.cameraEntity().setPosition(cameraPos);
@@ -299,6 +300,21 @@ public final class ScreenCreationManager {
 
 	private static Vec3d toCameraPos(Vec3d basePos) {
 		return basePos.add(0.0, CAMERA_EYE_HEIGHT, 0.0);
+	}
+
+	static BlockPos getSelectionPos1() {
+		return selectionPos1;
+	}
+
+	static BlockPos getSelectionPos2Preview() {
+		if (selectionPos1 == null) {
+			return null;
+		}
+		MinecraftClient client = MinecraftClient.getInstance();
+		if (client == null || client.crosshairTarget == null || client.crosshairTarget.getType() != HitResult.Type.BLOCK) {
+			return selectionPos1;
+		}
+		return ((BlockHitResult) client.crosshairTarget).getBlockPos();
 	}
 
 	private static void tryCreateScreen(MinecraftClient client, ClientPlayerEntity player) {
