@@ -56,10 +56,15 @@ public class ScreenConfigScreen extends Screen {
 		addDrawableChild(urlField);
 		y += 28;
 
-		// Stub camera choices – replace with real CameraStore later
 		kameraAuswahl.add(new CameraChoice(null, "Keine Kamera"));
-		kameraAuswahl.add(new CameraChoice(UUID.fromString("00000000-0000-0000-0000-000000000001"), "Kamera A"));
-		kameraAuswahl.add(new CameraChoice(UUID.fromString("00000000-0000-0000-0000-000000000002"), "Kamera B"));
+		for (LocalScreenStore.LocalScreenData screen : LocalScreenStore.getAllScreens()) {
+			if (!screen.id().equals(target.id())) {
+				kameraAuswahl.add(new CameraChoice(
+						screen.id(),
+						"Kamera @ " + screen.anchor().toShortString()
+				));
+			}
+		}
 
 		kameraIndex = kameraIndexFinden(target.cameraId());
 

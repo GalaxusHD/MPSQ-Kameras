@@ -16,5 +16,9 @@
   "gui.mpsqcamera.bildschirmconfig.eingabemodus":     "Eingabemodus",
   "gui.mpsqcamera.bildschirmconfig.url":              "URL",
   "gui.mpsqcamera.bildschirmconfig.speichern":        "Speichern",
-  "gui.mpsqcamera.bildschirmconfig.schliessen":       "Schließen"
+  "gui.mpsqcamera.bildschirmconfig.schliessen":       "Schließen",
+
+  "status.mpsqcamera.view_enter":                     "Kameraansicht aktiv (ESC zum Beenden)",
+  "status.mpsqcamera.view_exit":                      "Kameraansicht beendet",
+  "status.mpsqcamera.camera_offline":                 "Kamera derzeit nicht geladen"
 }
