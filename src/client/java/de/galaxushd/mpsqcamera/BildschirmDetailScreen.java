@@ -51,7 +51,7 @@ public class BildschirmDetailScreen extends Screen {
             if (!isCameraMode) {
                 streamUrlField = new TextFieldWidget(this.textRenderer, cx - 100, buttonY, 200, 20, Text.literal("URL"));
                 streamUrlField.setText(streamUrl);
-                addRenderableWidget(streamUrlField);
+                addDrawableChild(streamUrlField);
                 buttonY += 30;
             }
 
