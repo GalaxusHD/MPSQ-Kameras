@@ -3,6 +3,7 @@ package de.galaxushd.mpsqcamera;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
 
 /**
@@ -12,8 +13,9 @@ import net.minecraft.text.Text;
  *  ┌────────────────────────────────────┐  ← Rote Akzentlinie oben
  *  │         [LOGO oben-mitte]          │  ← TODO: echtes Logo-Texture
  *  │         MPSQ Kameras               │
+ *  │      [Code eingeben...]            │  ← Code-Input oben
  *  │  ╔══════════════════════════╗      │
- *  │  ║  [ Bildschirme        ] ║      │  ← Haupt-Button (funktionsfähig)
+ *  │  ║  [ Bildschirme        ] ║      │  ← Buttons (mittig)
  *  │  ║  [ Einstellungen      ] ║      │
  *  │  ╚══════════════════════════╝      │
  *  │ [Lizenz]                           │  ← Unten-links
@@ -24,6 +26,10 @@ public class ModConfigScreen extends Screen {
 	// Logo-Platzhalter-Abmessungen
 	private static final int LOGO_W = 200;
 	private static final int LOGO_H = 60;
+	private static final int CODE_INPUT_W = 180;
+	private static final int CODE_INPUT_H = 20;
+
+	private TextFieldWidget codeInputField;
 
 	public ModConfigScreen() {
 		super(Text.translatable("gui.mpsqcamera.hauptmenu.titel"));
@@ -33,6 +39,19 @@ public class ModConfigScreen extends Screen {
 	protected void init() {
 		int cx   = this.width / 2;
 		int btnW = 180;
+		
+		// ── Code-Input-Feld (über den Buttons) ──────────────────────────────────
+		codeInputField = new TextFieldWidget(this.textRenderer, cx - CODE_INPUT_W / 2, this.height / 2 - 50, CODE_INPUT_W, CODE_INPUT_H, Text.literal("Code"));
+		codeInputField.setPlaceholder(Text.literal("Aktivierungscode eingeben..."));
+		codeInputField.setMaxLength(20);
+		addRenderableWidget(codeInputField);
+		
+		// Code-Submit-Button (neben Input)
+		addDrawableChild(ButtonWidget.builder(
+				Text.literal("Beitreten"),
+				b -> submitCode()
+		).dimensions(cx + CODE_INPUT_W / 2 + 5, this.height / 2 - 50, 70, CODE_INPUT_H).build());
+
 		// Buttons in der unteren Hälfte des Bildschirms
 		int btnY = this.height / 2 + 8;
 
@@ -56,6 +75,21 @@ public class ModConfigScreen extends Screen {
 	}
 
 	// ── Aktionen ──────────────────────────────────────────────────────────────
+
+	private void submitCode() {
+		String code = codeInputField.getText().trim();
+		if (code.isEmpty()) {
+			MpsqCameraClient.LOGGER.warn("[MPSQ] Code-Feld leer.");
+			return;
+		}
+		
+		// Code-Validierung & Join-Anfrage an Backend
+		MpsqCameraClient.LOGGER.info("[MPSQ] Trete Bildschirm mit Code bei: " + code);
+		// TODO: Backend-Anfrage senden, Bildschirm zur Liste hinzufügen
+		
+		// Input-Feld leeren
+		codeInputField.setText("");
+	}
 
 	private void onBildschirme() {
 		// Öffne die Bildschirm-Liste
