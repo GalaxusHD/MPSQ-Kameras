@@ -10,6 +10,7 @@ import net.minecraft.client.option.Perspective;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.decoration.ArmorStandEntity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Items;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.text.Text;
@@ -70,8 +71,6 @@ public final class ScreenCreationManager {
 		lockPlayerPosition(client.player, activeViewSession.originPos());
 		activeViewSession.cameraEntity().setYaw(client.player.getYaw());
 		activeViewSession.cameraEntity().setPitch(client.player.getPitch());
-		activeViewSession.cameraEntity().setHeadYaw(client.player.getYaw());
-		activeViewSession.cameraEntity().setBodyYaw(client.player.getYaw());
 	}
 
 	private static void onEndTick(MinecraftClient client) {
@@ -290,7 +289,7 @@ public final class ScreenCreationManager {
 
 	private static boolean isCameraAreaLoadedByAnyPlayer(MinecraftClient client, Vec3d cameraPos) {
 		double maxDistSq = CAMERA_LOAD_RANGE * CAMERA_LOAD_RANGE;
-		for (ClientPlayerEntity worldPlayer : client.world.getPlayers()) {
+		for (PlayerEntity worldPlayer : client.world.getPlayers()) {
 			if (worldPlayer.squaredDistanceTo(cameraPos) <= maxDistSq) {
 				return true;
 			}
