@@ -16,6 +16,17 @@
   "gui.mpsqcamera.bildschirmconfig.eingabemodus":     "Input Mode",
   "gui.mpsqcamera.bildschirmconfig.url":              "URL",
   "gui.mpsqcamera.bildschirmconfig.speichern":        "Save",
-  "gui.mpsqcamera.bildschirmconfig.schliessen":       "Close"
+  "gui.mpsqcamera.bildschirmconfig.schliessen":       "Close",
+
+  "gui.mpsqcamera.einstellungen.titel":               "Settings",
+  "gui.mpsqcamera.einstellungen.werkzeug_item_label": "Tool Item:",
+  "gui.mpsqcamera.einstellungen.werkzeug_item":       "Tool Item",
+  "gui.mpsqcamera.einstellungen.zuruecksetzen":       "Reset",
+  "gui.mpsqcamera.einstellungen.tastenkuerzel_label": "Keybind:",
+  "gui.mpsqcamera.einstellungen.tasten_belegen":      "Change Keybind…",
+  "gui.mpsqcamera.einstellungen.alle_bildschirme":    "All Screens: %s%%",
+  "gui.mpsqcamera.einstellungen.speichern":           "Save",
+  "gui.mpsqcamera.einstellungen.zurueck":             "Back",
+  "gui.mpsqcamera.einstellungen.item_ungueltig":      "Unknown item!"
 }
 

@@ -6,10 +6,13 @@ import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.KeyBinding;
+import net.minecraft.item.Item;
 import net.minecraft.item.Items;
+import net.minecraft.registry.Registries;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 
 public final class ScreenCreationManager {
@@ -64,11 +67,13 @@ public final class ScreenCreationManager {
 	}
 
 	private static void tryCreateScreen(MinecraftClient client, ClientPlayerEntity player) {
-		boolean holdingArrow =
-				player.getMainHandStack().isOf(Items.ARROW) ||
-				player.getOffHandStack().isOf(Items.ARROW);
+		Item toolItem = getConfiguredToolItem();
 
-		if (!holdingArrow) return;
+		boolean holdingTool =
+				player.getMainHandStack().isOf(toolItem) ||
+				player.getOffHandStack().isOf(toolItem);
+
+		if (!holdingTool) return;
 
 		if (client.crosshairTarget == null || client.crosshairTarget.getType() != HitResult.Type.BLOCK) {
 			MpsqCameraClient.LOGGER.info("[MPSQ Kameras] Kein Block anvisiert.");
@@ -93,5 +98,17 @@ public final class ScreenCreationManager {
 				screen -> client.setScreen(new ScreenConfigScreen(screen)),
 				() -> MpsqCameraClient.LOGGER.info("[MPSQ Kameras] Kein Bildschirm in der Nähe zum Konfigurieren.")
 		);
+	}
+
+	/** Gibt das per Konfiguration eingestellte Werkzeug-Item zurück (Fallback: Pfeil). */
+	private static Item getConfiguredToolItem() {
+		try {
+			Identifier id = Identifier.of(ModConfig.getToolItemId());
+			Item item = Registries.ITEM.get(id);
+			// Registries.ITEM.get() gibt Items.AIR zurück wenn nicht vorhanden
+			return (item == null || item == Items.AIR) ? Items.ARROW : item;
+		} catch (Exception e) {
+			return Items.ARROW;
+		}
 	}
 }

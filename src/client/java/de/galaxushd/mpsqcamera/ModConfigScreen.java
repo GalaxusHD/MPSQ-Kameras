@@ -89,8 +89,9 @@ public class ModConfigScreen extends Screen {
 	}
 
 	private void onEinstellungen() {
-		// TODO: Einstellungen-Screen öffnen
-		MpsqCameraClient.LOGGER.info("[MPSQ Kameras] Einstellungen (noch nicht implementiert).");
+		if (this.client != null) {
+			this.client.setScreen(new EinstellungenScreen(this));
+		}
 	}
 
 	private void onLizenz() {
