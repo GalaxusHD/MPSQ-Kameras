@@ -7,27 +7,48 @@ import net.minecraft.text.Text;
 
 /**
  * Zeigt die Mod-Lizenzinformationen an (nicht editierbarer Platzhaltertext).
- *
- * TODO: Tatsächlichen Lizenztext einfügen, wenn vom Mod-Autor bereitgestellt.
  */
 public class LizenzScreen extends Screen {
 
     private final Screen parent;
+    private int scrollOffset = 0;
 
-    // TODO: Diesen Platzhaltertext durch den vollständigen Lizenztext ersetzen.
+    // Vollständiger Lizenztext
     private static final String[] LIZENZ_ZEILEN = {
-        "MPSQ Kameras – Lizenzinformationen",
+        "MPSQ Kameras – Nutzungsbedingungen",
         "",
-        "Lizenz: LGPL-2.1-or-later",
+        "Version: 1.0",
         "",
-        "[TODO: Vollständiger Lizenztext wird hier eingefügt]",
+        "Diese Modifikation (\"MPSQ Kameras\") wurde ausschließlich für das",
+        "MixelPixel Squid Game Team entwickelt.",
         "",
-        "Entwickelt von: GalaxusHD",
+        "1. Nutzung",
+        "Die Mod darf ausschließlich innerhalb des MixelPixel Squid Game Teams",
+        "verwendet werden. Eine Nutzung außerhalb dieses vorgesehenen Zwecks ist",
+        "ohne ausdrückliche Genehmigung nicht gestattet.",
         "",
-        "Quellcode & weitere Infos:",
-        "github.com/GalaxusHD/MPSQ-Kameras",
+        "2. Missbrauch",
+        "Jegliche Form des Missbrauchs oder der Ausnutzung dieser Mod ist untersagt.",
         "",
-        "Alle Rechte vorbehalten.",
+        "3. Verstöße gegen MixelPixel-Regeln",
+        "Sollte diese Mod zur Verletzung der MixelPixel-Regeln verwendet werden,",
+        "können neben den üblichen Konsequenzen auch Maßnahmen seitens des",
+        "MixelPixel-Teams gegen den jeweiligen Nutzer ergriffen werden.",
+        "",
+        "4. Weiterverwendung",
+        "Eine Weitergabe, Veränderung, Veröffentlichung oder Wiederverwendung",
+        "dieser Mod – ganz oder teilweise – ist ausschließlich nach vorheriger",
+        "Absprache und ausdrücklicher Genehmigung von \"Galaxus_HD\" gestattet.",
+        "",
+        "5. Credits",
+        "Die Grundidee der Bildschirme stammt von \"chaotischer\".",
+        "Vielen Dank für die Inspiration.",
+        "",
+        "6. Schlussbestimmung",
+        "Mit der Nutzung dieser Mod erkennen alle Nutzer diese",
+        "Nutzungsbedingungen an.",
+        "",
+        "© MPSQ Kameras",
     };
 
     public LizenzScreen(Screen parent) {
@@ -67,13 +88,26 @@ public class LizenzScreen extends Screen {
         context.fill(cx - 130, startY, cx + 130, startY + 1, MpsqTheme.WEINROT);
         startY += 10;
 
-        // Lizenzzeilen (nicht editierbar – nur Anzeige)
+        // Lizenzzeilen (nicht editierbar – nur Anzeige, scrollbar)
+        int lineY = startY - scrollOffset;
+        int maxDisplayY = this.height - 50;
+
         for (String zeile : LIZENZ_ZEILEN) {
-            context.drawCenteredTextWithShadow(
-                    this.textRenderer, Text.literal(zeile),
-                    cx, startY, MpsqTheme.TEXT_NORMAL);
-            startY += 11;
+            if (lineY > startY - 5 && lineY < maxDisplayY) {
+                context.drawCenteredTextWithShadow(
+                        this.textRenderer, Text.literal(zeile),
+                        cx, lineY, MpsqTheme.TEXT_NORMAL);
+            }
+            lineY += 11;
         }
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        scrollOffset -= (int)(verticalAmount * 11); // Eine Zeile = 11px
+        int maxScroll = Math.max(0, (LIZENZ_ZEILEN.length * 11) - (this.height - 70));
+        scrollOffset = Math.max(0, Math.min(scrollOffset, maxScroll));
+        return true;
     }
 
     @Override
