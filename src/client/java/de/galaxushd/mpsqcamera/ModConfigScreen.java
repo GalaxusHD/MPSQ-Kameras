@@ -3,31 +3,27 @@ package de.galaxushd.mpsqcamera;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
 
 /**
- * Hauptmenü des Mods – wird per Tastenkürzel geöffnet.
+ * Hauptmenü des Mods – wird per Tastenkürzel (Standard: M) geöffnet.
  *
  * Layout:
- *   ┌──────────────────────────────┐
- *   │        [LOGO-BEREICH]        │
- *   │   ________________________   │
- *   │  | Zugangscode eingeben…  |  │
- *   │  |________________________|  │
- *   │  [Bildschirm erstellen]      │
- *   │  [Einstellungen]             │
- *   │                              │
- *   │ [Lizenz]                     │
- *   └──────────────────────────────┘
+ *  ┌────────────────────────────────────┐  ← Rote Akzentlinie oben
+ *  │         [LOGO oben-mitte]          │  ← TODO: echtes Logo-Texture
+ *  │         MPSQ Kameras               │
+ *  │  ╔══════════════════════════╗      │
+ *  │  ║  [ Bildschirme        ] ║      │  ← Haupt-Button (Stub, folgt)
+ *  │  ║  [ Einstellungen      ] ║      │
+ *  │  ╚══════════════════════════╝      │
+ *  │ [Lizenz]                           │  ← Unten-links
+ *  └────────────────────────────────────┘  ← Weinrote Akzentlinie unten
  */
 public class ModConfigScreen extends Screen {
 
-	// Dimensions of the logo placeholder box
-	private static final int LOGO_W = 160;
-	private static final int LOGO_H = 50;
-
-	private TextFieldWidget zugangscodeField;
+	// Logo-Platzhalter-Abmessungen
+	private static final int LOGO_W = 200;
+	private static final int LOGO_H = 60;
 
 	public ModConfigScreen() {
 		super(Text.translatable("gui.mpsqcamera.hauptmenu.titel"));
@@ -35,98 +31,84 @@ public class ModConfigScreen extends Screen {
 
 	@Override
 	protected void init() {
-		int cx = this.width / 2;
+		int cx   = this.width / 2;
+		int btnW = 180;
+		// Buttons in der unteren Hälfte des Bildschirms
+		int btnY = this.height / 2 + 8;
 
-		// Logo box sits in the upper third of the screen
-		int logoTop = this.height / 4 - LOGO_H / 2;
-
-		// Zugangscode input – centered, just below logo
-		int fieldY = logoTop + LOGO_H + 14;
-		int fieldW = LOGO_W + 40;
-
-		zugangscodeField = new TextFieldWidget(
-				this.textRenderer,
-				cx - fieldW / 2, fieldY,
-				fieldW, 20,
-				Text.translatable("gui.mpsqcamera.hauptmenu.zugangscode")
-		);
-		zugangscodeField.setPlaceholder(
-				Text.translatable("gui.mpsqcamera.hauptmenu.zugangscode.hinweis")
-		);
-		zugangscodeField.setMaxLength(64);
-		addDrawableChild(zugangscodeField);
-
-		// "Bildschirm erstellen" button
-		int btnW = fieldW;
-		int btnY = fieldY + 28;
+		// "Bildschirme" – Haupt-Button (Funktion folgt später)
 		addDrawableChild(ButtonWidget.builder(
-				Text.translatable("gui.mpsqcamera.hauptmenu.bildschirm_erstellen"),
-				b -> onBildschirmErstellen()
+				Text.translatable("gui.mpsqcamera.hauptmenu.bildschirme"),
+				b -> onBildschirme()
 		).dimensions(cx - btnW / 2, btnY, btnW, 20).build());
 
-		// "Einstellungen" button
+		// "Einstellungen"
 		addDrawableChild(ButtonWidget.builder(
 				Text.translatable("gui.mpsqcamera.hauptmenu.einstellungen"),
 				b -> onEinstellungen()
 		).dimensions(cx - btnW / 2, btnY + 26, btnW, 20).build());
 
-		// "Lizenz" – bottom-left corner
+		// "Lizenz" – unten-links
 		addDrawableChild(ButtonWidget.builder(
 				Text.translatable("gui.mpsqcamera.hauptmenu.lizenz"),
 				b -> onLizenz()
 		).dimensions(6, this.height - 26, 60, 20).build());
 	}
 
-	// ── Actions ─────────────────────────────────────────────────────────────
+	// ── Aktionen ─────────────────────────────────────────────────────────────
 
-	private void onBildschirmErstellen() {
-		String code = zugangscodeField.getText().trim();
-		if (!code.isEmpty()) {
-			MpsqCameraClient.LOGGER.info("[MPSQ Kameras] Zugangscode eingegeben: {}", code);
-		}
-		// TODO: Bildschirm-Erstellungslogik einbauen (Shift+Klick weiterhin möglich)
-		this.close();
+	private void onBildschirme() {
+		// TODO: Bildschirm-Verwaltungs-Screen öffnen
+		MpsqCameraClient.LOGGER.info("[MPSQ Kameras] Bildschirme (folgt in einer späteren Version).");
 	}
 
 	private void onEinstellungen() {
-		// TODO: Einstellungen-Screen öffnen
-		MpsqCameraClient.LOGGER.info("[MPSQ Kameras] Einstellungen (noch nicht implementiert).");
+		this.client.setScreen(new ModSettingsScreen(this));
 	}
 
 	private void onLizenz() {
-		// TODO: Lizenz-Dialog oder externer Link
-		MpsqCameraClient.LOGGER.info("[MPSQ Kameras] Lizenz: LGPL-2.1-or-later");
+		this.client.setScreen(new LizenzScreen(this));
 	}
 
-	// ── Rendering ───────────────────────────────────────────────────────────
+	// ── Rendering ─────────────────────────────────────────────────────────────
+
+	@Override
+	public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
+		super.renderBackground(context, mouseX, mouseY, delta);
+		MpsqTheme.drawBackground(context, this.width, this.height);
+	}
 
 	@Override
 	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
 		renderBackground(context, mouseX, mouseY, delta);
 
-		int cx = this.width / 2;
+		int cx      = this.width / 2;
 		int logoTop = this.height / 4 - LOGO_H / 2;
+		int logoX   = cx - LOGO_W / 2;
 
-		// Logo placeholder – filled rectangle + border
-		int logoX = cx - LOGO_W / 2;
-		context.fill(logoX, logoTop, logoX + LOGO_W, logoTop + LOGO_H, 0x55000000);
-		// Border (1px)
-		context.drawBorder(logoX, logoTop, LOGO_W, LOGO_H, 0xFFAAAAAA);
-		// Center text inside the box
+		// ── Logo-Bereich ─────────────────────────────────────────────────────
+		// TODO: Echtes Logo-Texture verwenden, sobald verfügbar:
+		//   Identifier logoId = Identifier.of("mpsqcamera", "textures/gui/logo.png");
+		//   context.drawTexture(logoId, logoX, logoTop, 0, 0, LOGO_W, LOGO_H, LOGO_W, LOGO_H);
+		context.fill(logoX, logoTop, logoX + LOGO_W, logoTop + LOGO_H, 0x55150505);
+		context.drawBorder(logoX, logoTop, LOGO_W, LOGO_H, MpsqTheme.WEINROT);
 		context.drawCenteredTextWithShadow(
 				this.textRenderer,
 				Text.translatable("gui.mpsqcamera.hauptmenu.logo_platzhalter"),
 				cx, logoTop + LOGO_H / 2 - 4,
-				0xAAAAAA
-		);
+				MpsqTheme.TEXT_GEDAEMPT);
 
-		// Label above the text field
+		// ── Mod-Titel unterhalb Logo ──────────────────────────────────────────
 		context.drawCenteredTextWithShadow(
 				this.textRenderer,
-				Text.translatable("gui.mpsqcamera.hauptmenu.zugangscode"),
-				cx, logoTop + LOGO_H + 3,
-				0xFFFFFF
-		);
+				Text.translatable("gui.mpsqcamera.hauptmenu.titel"),
+				cx, logoTop + LOGO_H + 8,
+				MpsqTheme.TEXT_TITEL);
+
+		// ── Panel hinter den Buttons ──────────────────────────────────────────
+		int panelW = 220;
+		int panelH = 76;
+		MpsqTheme.drawPanel(context, cx - panelW / 2, this.height / 2, panelW, panelH);
 
 		super.render(context, mouseX, mouseY, delta);
 	}

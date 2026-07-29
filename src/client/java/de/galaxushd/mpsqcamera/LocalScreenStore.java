@@ -15,11 +15,28 @@ public final class LocalScreenStore {
 
 	private LocalScreenStore() {}
 
+	/** Legt einen Bildschirm mit einer einzelnen Anker-Position an (Legacy-Pfad). */
 	public static void addScreen(BlockPos anchor, Vec3d createdFrom) {
 		SCREENS.add(new LocalScreenData(
 				UUID.randomUUID(),
 				anchor.toImmutable(),
+				anchor.toImmutable(),
+				"Bildschirm",
 				createdFrom,
+				ScreenInputType.LINK,
+				"",
+				null
+		));
+	}
+
+	/** Legt einen Bildschirm aus der Zweipunkt-Auswahl an. */
+	public static void addScreenFromSelection(BlockPos pos1, BlockPos pos2, String name) {
+		SCREENS.add(new LocalScreenData(
+				UUID.randomUUID(),
+				pos1.toImmutable(),
+				pos2.toImmutable(),
+				name.isBlank() ? "Bildschirm" : name,
+				new Vec3d(pos1.getX(), pos1.getY(), pos1.getZ()),
 				ScreenInputType.LINK,
 				"",
 				null
@@ -29,7 +46,8 @@ public final class LocalScreenStore {
 	public static List<LocalScreenData> getInRange(Vec3d playerPos) {
 		List<LocalScreenData> result = new ArrayList<>();
 		for (LocalScreenData s : SCREENS) {
-			if (s.anchor().getSquaredDistance(playerPos.x, playerPos.y, playerPos.z) <= LOAD_RANGE * LOAD_RANGE) {
+			if (s.pos1().getSquaredDistance(playerPos.x, playerPos.y, playerPos.z)
+					<= LOAD_RANGE * LOAD_RANGE) {
 				result.add(s);
 			}
 		}
@@ -38,7 +56,7 @@ public final class LocalScreenStore {
 
 	public static Optional<LocalScreenData> findByAnchor(BlockPos anchor) {
 		for (LocalScreenData s : SCREENS) {
-			if (s.anchor().equals(anchor)) return Optional.of(s);
+			if (s.pos1().equals(anchor)) return Optional.of(s);
 		}
 		return Optional.empty();
 	}
@@ -47,7 +65,7 @@ public final class LocalScreenStore {
 		double best = maxDistance * maxDistance;
 		LocalScreenData found = null;
 		for (LocalScreenData s : SCREENS) {
-			double d = s.anchor().getSquaredDistance(pos.x, pos.y, pos.z);
+			double d = s.pos1().getSquaredDistance(pos.x, pos.y, pos.z);
 			if (d <= best) {
 				best = d;
 				found = s;
@@ -62,7 +80,9 @@ public final class LocalScreenStore {
 			if (s.id().equals(id)) {
 				SCREENS.set(i, new LocalScreenData(
 						s.id(),
-						s.anchor(),
+						s.pos1(),
+						s.pos2(),
+						s.name(),
 						s.createdFrom(),
 						mode,
 						url == null ? "" : url,
@@ -88,10 +108,11 @@ public final class LocalScreenStore {
 
 	// ── Record ───────────────────────────────────────────────────────────────
 
-	// No owner field on purpose -> everyone in range can load.
 	public record LocalScreenData(
 			UUID id,
-			BlockPos anchor,
+			BlockPos pos1,
+			BlockPos pos2,
+			String name,
 			Vec3d createdFrom,
 			ScreenInputType inputType,
 			String url,

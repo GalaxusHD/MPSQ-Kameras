@@ -12,5 +12,6 @@ public class MpsqCameraClient implements ClientModInitializer {
 	public void onInitializeClient() {
 		LOGGER.info("[MPSQ Kameras] Client mod initialized.");
 		ScreenCreationManager.initialize();
+		SelectionRenderer.initialize();
 	}
 }
