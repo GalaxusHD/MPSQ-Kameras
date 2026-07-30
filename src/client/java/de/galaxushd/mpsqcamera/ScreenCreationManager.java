@@ -10,12 +10,15 @@ import net.minecraft.client.option.Perspective;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.decoration.ArmorStandEntity;
+import net.minecraft.item.Item;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Items;
+import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.text.Text;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
@@ -30,7 +33,6 @@ public final class ScreenCreationManager {
 	private static final long OFFLINE_HINT_INTERVAL_MS = 1000L;
 	private static final double CAMERA_EYE_HEIGHT = 1.62;
 
-	private static boolean wasAttackPressedLastTick = false;
 	private static boolean wasUsePressedLastTick = false;
 	private static boolean wasEscPressedLastTick = false;
 	private static BlockPos selectionPos1;
@@ -77,7 +79,6 @@ public final class ScreenCreationManager {
 	private static void onEndTick(MinecraftClient client) {
 		if (client.options == null) return;
 
-		boolean attackPressed = client.options.attackKey.isPressed();
 		boolean usePressed = client.options.useKey.isPressed();
 		boolean escPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), GLFW.GLFW_KEY_ESCAPE);
 
@@ -85,27 +86,24 @@ public final class ScreenCreationManager {
 			if (activeViewSession != null) {
 				exitViewMode(client, false);
 			}
-			wasAttackPressedLastTick = attackPressed;
 			wasUsePressedLastTick = usePressed;
 			wasEscPressedLastTick = escPressed;
 			return;
 		}
 
 		ClientPlayerEntity player = client.player;
-		boolean sneakPressed = player.isSneaking();
 
 		if (activeViewSession != null) {
 			handleActiveViewSession(client, player, usePressed, escPressed);
 		} else {
-			// Shift + LeftClick with Arrow => Bildschirm erstellen
-			if (attackPressed && !wasAttackPressedLastTick && sneakPressed) {
-				tryCreateScreen(client, player);
-			}
-
 			handlePassiveScreenLook(client, player);
 
 			if (usePressed && !wasUsePressedLastTick) {
-				tryEnterViewMode(client, player);
+				if (isHoldingToolItem(player)) {
+					tryCreateScreen(client, player);
+				} else {
+					tryEnterViewMode(client, player);
+				}
 			}
 		}
 
@@ -121,7 +119,6 @@ public final class ScreenCreationManager {
 			openNearestScreenConfig(client, player);
 		}
 
-		wasAttackPressedLastTick = attackPressed;
 		wasUsePressedLastTick = usePressed;
 		wasEscPressedLastTick = escPressed;
 	}
@@ -318,11 +315,7 @@ public final class ScreenCreationManager {
 	}
 
 	private static void tryCreateScreen(MinecraftClient client, ClientPlayerEntity player) {
-		boolean holdingArrow =
-				player.getMainHandStack().isOf(Items.ARROW) ||
-				player.getOffHandStack().isOf(Items.ARROW);
-
-		if (!holdingArrow) return;
+		if (!isHoldingToolItem(player)) return;
 
 		if (client.crosshairTarget == null || client.crosshairTarget.getType() != HitResult.Type.BLOCK) {
 			MpsqCameraClient.LOGGER.info("[MPSQ Kameras] Kein Block anvisiert.");
@@ -354,6 +347,19 @@ public final class ScreenCreationManager {
 			MpsqCameraClient.LOGGER.info("[MPSQ Kameras] Pos 2 markiert: {} → Erstell-Menü öffnen", pos2);
 			client.setScreen(new BildschirmErstellenScreen(pos1, pos2));
 		}
+	}
+
+	private static boolean isHoldingToolItem(ClientPlayerEntity player) {
+		Item toolItem = getConfiguredToolItem();
+		return player.getMainHandStack().isOf(toolItem) || player.getOffHandStack().isOf(toolItem);
+	}
+
+	private static Item getConfiguredToolItem() {
+		Identifier identifier = Identifier.tryParse(ModConfig.toolItemId);
+		if (identifier != null && Registries.ITEM.containsId(identifier)) {
+			return Registries.ITEM.get(identifier);
+		}
+		return Items.BLAZE_ROD;
 	}
 
 	private static void openNearestScreenConfig(MinecraftClient client, ClientPlayerEntity player) {

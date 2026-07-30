@@ -14,7 +14,9 @@ public final class MpsqTheme {
     // ── Farb-Palette ─────────────────────────────────────────────────────────
 
     /** Primärrot – Akzentfarbe, Rahmen oben */
-    public static final int ROT          = 0xFFCC0000;
+    public static final int ROT          = 0xFFB30000;
+    /** Dunkelrot – äußerer Rahmen */
+    public static final int DUNKELROT    = 0xFF8B0000;
     /** Weinrot – Sekundär-Akzent, Rahmen unten / Panel-Rand */
     public static final int WEINROT      = 0xFF7A0020;
     /** Dunkelgrau – Hintergrund oben */
@@ -41,13 +43,16 @@ public final class MpsqTheme {
     public static void drawBackground(DrawContext context, int width, int height) {
         // Vertikaler Gradient: dunkles Weinrot-Grau → fast Schwarz
         context.fillGradient(0, 0, width, height, 0xCC1A0808, 0xCC050000);
-        // Obere rote Akzentlinie (3 px)
-        context.fill(0, 0, width, 3, ROT);
-        // Untere weinrote Akzentlinie (3 px)
-        context.fill(0, height - 3, width, height, WEINROT);
-        // Schmale seitliche Akzentlinien (2 px)
-        context.fill(0, 3, 2, height - 3, 0x88AA1111);
-        context.fill(width - 2, 3, width, height - 3, 0x88AA1111);
+        // Dunkelroter Außenrahmen
+        context.drawBorder(0, 0, width, height, DUNKELROT);
+        context.drawBorder(1, 1, width - 2, height - 2, 0x66350000);
+        // Obere rote Akzentlinie
+        context.fill(3, 3, width - 3, 7, ROT);
+        // Untere weinrote Akzentlinie
+        context.fill(3, height - 7, width - 3, height - 3, WEINROT);
+        // Schmale seitliche Akzentlinien
+        context.fill(3, 7, 5, height - 7, 0x88AA1111);
+        context.fill(width - 5, 7, width - 3, height - 7, 0x88AA1111);
     }
 
     /**

@@ -12,7 +12,7 @@ import net.minecraft.util.math.Vec3d;
 
 /**
  * Zeichnet einen roten Wireframe-Rahmen im Welt-Raum während der zweistufigen
- * Positions-Auswahl (Shift + Klick mit Werkzeug-Item).
+ * Positions-Auswahl (Rechtsklick mit Werkzeug-Item).
  *
  * Farbe: Rot (RGBA 255, 0, 0, 0.8)
  */

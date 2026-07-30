@@ -45,7 +45,7 @@ public class ModSettingsScreen extends Screen {
         addDrawableChild(ButtonWidget.builder(
                 Text.translatable("gui.mpsqcamera.einstellungen.item_reset"),
                 b -> {
-                    ModConfig.toolItemId = "minecraft:arrow";
+                    ModConfig.toolItemId = "minecraft:blaze_rod";
                     itemField.setText(ModConfig.toolItemId);
                 }
         ).dimensions(cx - btnW / 2 + fieldW + 4, y, 52, 20).build());
@@ -90,7 +90,6 @@ public class ModSettingsScreen extends Screen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        renderBackground(context, mouseX, mouseY, delta);
         super.render(context, mouseX, mouseY, delta);
 
         int cx   = this.width / 2;
