@@ -129,8 +129,14 @@ public class ScreenConfigScreen extends Screen {
 	// ── Rendering ───────────────────────────────────────────────────────────
 
 	@Override
+	public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
+		super.renderBackground(context, mouseX, mouseY, delta);
+		MpsqTheme.drawBackground(context, this.width, this.height);
+		MpsqTheme.drawPanel(context, this.width / 2 - 130, this.height / 2 - 96, 260, 150);
+	}
+
+	@Override
 	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-		renderBackground(context, mouseX, mouseY, delta);
 		super.render(context, mouseX, mouseY, delta);
 
 		context.drawCenteredTextWithShadow(this.textRenderer, this.title,

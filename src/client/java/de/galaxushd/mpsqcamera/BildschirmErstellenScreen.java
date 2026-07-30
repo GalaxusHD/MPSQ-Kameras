@@ -9,7 +9,8 @@ import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 
 /**
- * Öffnet sich automatisch nachdem zwei Positionen mit dem Werkzeug markiert wurden.
+ * Öffnet sich automatisch nachdem zwei Positionen mit Rechtsklick und dem
+ * Werkzeug markiert wurden.
  * Deutsches Gegenstück zum "Create WatchParty Screen"-Menü.
  *
  * Layout:
@@ -156,7 +157,6 @@ public class BildschirmErstellenScreen extends Screen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        renderBackground(context, mouseX, mouseY, delta);
         super.render(context, mouseX, mouseY, delta);
 
         int cx    = this.width / 2;

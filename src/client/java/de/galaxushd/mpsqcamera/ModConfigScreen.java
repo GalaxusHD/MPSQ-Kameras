@@ -4,14 +4,16 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.render.RenderLayer;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 
 /**
- * Hauptmenü des Mods – wird per Tastenkürzel (Standard: M) geöffnet.
+ * Hauptmenü des Mods – wird per Tastenkürzel (Standard: K) geöffnet.
  *
  * Layout:
  *  ┌────────────────────────────────────┐  ← Rote Akzentlinie oben
- *  │         [LOGO oben-mitte]          │  ← TODO: echtes Logo-Texture
+ *  │         [LOGO oben-mitte]          │
  *  │         MPSQ Kameras               │
  *  │      [Code eingeben...]            │  ← Code-Input oben
  *  │  ╔══════════════════════════╗      │
@@ -22,10 +24,12 @@ import net.minecraft.text.Text;
  *  └────────────────────────────────────┘  ← Weinrote Akzentlinie unten
  */
 public class ModConfigScreen extends Screen {
+	private static final Identifier LOGO_TEXTURE = Identifier.of(MpsqCameraClient.MOD_ID, "textures/gui/logo.png");
 
-	// Logo-Platzhalter-Abmessungen
-	private static final int LOGO_W = 200;
-	private static final int LOGO_H = 60;
+	private static final int LOGO_TEXTURE_W = 512;
+	private static final int LOGO_TEXTURE_H = 128;
+	private static final int LOGO_W = 256;
+	private static final int LOGO_H = 64;
 	private static final int CODE_INPUT_W = 180;
 	private static final int CODE_INPUT_H = 20;
 
@@ -39,21 +43,23 @@ public class ModConfigScreen extends Screen {
 	protected void init() {
 		int cx   = this.width / 2;
 		int btnW = 180;
+		int panelY = this.height / 2 - 14;
 		
 		// ── Code-Input-Feld (über den Buttons) ──────────────────────────────────
-		codeInputField = new TextFieldWidget(this.textRenderer, cx - CODE_INPUT_W / 2, this.height / 2 - 50, CODE_INPUT_W, CODE_INPUT_H, Text.literal("Code"));
+		codeInputField = new TextFieldWidget(this.textRenderer, cx - CODE_INPUT_W / 2, panelY - 38, CODE_INPUT_W, CODE_INPUT_H, Text.literal("Code"));
 		codeInputField.setPlaceholder(Text.literal("Aktivierungscode eingeben..."));
 		codeInputField.setMaxLength(20);
 		addDrawableChild(codeInputField);
+		setInitialFocus(codeInputField);
 		
 		// Code-Submit-Button (neben Input)
 		addDrawableChild(ButtonWidget.builder(
 				Text.literal("Beitreten"),
 				b -> submitCode()
-		).dimensions(cx + CODE_INPUT_W / 2 + 5, this.height / 2 - 50, 70, CODE_INPUT_H).build());
+		).dimensions(cx + CODE_INPUT_W / 2 + 5, panelY - 38, 70, CODE_INPUT_H).build());
 
 		// Buttons in der unteren Hälfte des Bildschirms
-		int btnY = this.height / 2 + 8;
+		int btnY = panelY + 20;
 
 		// "Bildschirme" – Haupt-Button (öffnet BildschirmListScreen)
 		addDrawableChild(ButtonWidget.builder(
@@ -115,32 +121,34 @@ public class ModConfigScreen extends Screen {
 	@Override
 	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
 		int cx      = this.width / 2;
-		int logoTop = this.height / 4 - LOGO_H / 2;
+		int logoTop = Math.max(18, this.height / 4 - LOGO_H / 2);
 		int logoX   = cx - LOGO_W / 2;
+		int panelW = 286;
+		int panelH = 118;
+		int panelX = cx - panelW / 2;
+		int panelY = this.height / 2 - 14;
+
+		// ── Hauptmenü-Rahmen / Panel ──────────────────────────────────────────
+		MpsqTheme.drawPanel(context, panelX, panelY, panelW, panelH);
+		context.fill(panelX + 1, panelY + 1, panelX + panelW - 1, panelY + 4, MpsqTheme.ROT);
+		context.fill(panelX + 1, panelY + panelH - 4, panelX + panelW - 1, panelY + panelH - 1, MpsqTheme.WEINROT);
 
 		// ── Logo-Bereich ─────────────────────────────────────────────────────
-		// TODO: Echtes Logo-Texture verwenden, sobald verfügbar:
-		//   Identifier logoId = Identifier.of("mpsqcamera", "textures/gui/logo.png");
-		//   context.drawTexture(logoId, logoX, logoTop, 0, 0, LOGO_W, LOGO_H, LOGO_W, LOGO_H);
-		context.fill(logoX, logoTop, logoX + LOGO_W, logoTop + LOGO_H, 0x55150505);
-		context.drawBorder(logoX, logoTop, LOGO_W, LOGO_H, MpsqTheme.WEINROT);
-		context.drawCenteredTextWithShadow(
-				this.textRenderer,
-				Text.translatable("gui.mpsqcamera.hauptmenu.logo_platzhalter"),
-				cx, logoTop + LOGO_H / 2 - 4,
-				MpsqTheme.TEXT_GEDAEMPT);
+		context.fill(logoX - 12, logoTop - 10, logoX + LOGO_W + 12, logoTop + LOGO_H + 10, 0x55150505);
+		context.drawBorder(logoX - 12, logoTop - 10, LOGO_W + 24, LOGO_H + 20, MpsqTheme.WEINROT);
+		context.drawTexture(RenderLayer::getGuiTextured, LOGO_TEXTURE, logoX, logoTop, 0.0F, 0.0F, LOGO_W, LOGO_H, LOGO_TEXTURE_W, LOGO_TEXTURE_H);
 
 		// ── Mod-Titel unterhalb Logo ──────────────────────────────────────────
 		context.drawCenteredTextWithShadow(
 				this.textRenderer,
 				Text.translatable("gui.mpsqcamera.hauptmenu.titel"),
-				cx, logoTop + LOGO_H + 8,
+				cx, logoTop + LOGO_H + 14,
 				MpsqTheme.TEXT_TITEL);
-
-		// ── Panel hinter den Buttons ──────────────────────────────────────────
-		int panelW = 220;
-		int panelH = 76;
-		MpsqTheme.drawPanel(context, cx - panelW / 2, this.height / 2, panelW, panelH);
+		context.drawCenteredTextWithShadow(
+				this.textRenderer,
+				Text.literal("Professionelles Kameramenü"),
+				cx, logoTop + LOGO_H + 26,
+				MpsqTheme.TEXT_GEDAEMPT);
 
 		super.render(context, mouseX, mouseY, delta);
 	}
