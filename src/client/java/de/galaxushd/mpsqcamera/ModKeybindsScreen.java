@@ -61,7 +61,7 @@ public class ModKeybindsScreen extends Screen {
         addDrawableChild(ButtonWidget.builder(
                 Text.literal("Alle zurücksetzen"),
                 b -> {
-                    for (KeyBinding k : modKeys) k.resetKeyToDefault();
+                    for (KeyBinding k : modKeys) k.setBoundKey(k.getDefaultKey());
                     KeyBinding.updateKeysByCode();
                     pendingRebind = null;
                     clearAndInit();
