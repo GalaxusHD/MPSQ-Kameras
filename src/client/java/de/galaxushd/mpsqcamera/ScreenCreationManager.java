@@ -226,12 +226,10 @@ public final class ScreenCreationManager {
 
 		LocalScreenStore.LocalScreenData sourceScreen = LocalScreenStore.findByAnchor(session.sourceAnchor()).orElse(null);
 		if (sourceScreen == null) return false;
-		if (client.world.getBlockState(sourceScreen.pos1()).isAir()) return false;
 		if (sourceScreen.inputType() != LocalScreenStore.ScreenInputType.CAMERA || sourceScreen.cameraId() == null) return false;
 
 		LocalScreenStore.LocalScreenData cameraScreen = LocalScreenStore.findById(session.cameraId()).orElse(null);
 		if (cameraScreen == null) return false;
-		if (client.world.getBlockState(cameraScreen.pos1()).isAir()) return false;
 
 		Vec3d cameraPos = toCameraPos(cameraScreen.createdFrom());
 		session.cameraEntity().setPosition(cameraPos);
@@ -276,13 +274,90 @@ public final class ScreenCreationManager {
 	}
 
 	private static Optional<LocalScreenStore.LocalScreenData> getScreenAtCrosshair(MinecraftClient client) {
-		if (!(client.crosshairTarget instanceof BlockHitResult hit)) {
-			return Optional.empty();
+		if (client.player == null) return Optional.empty();
+
+		double reach = client.player.getBlockInteractionRange();
+		Vec3d eye = client.player.getCameraPosVec(1.0f);
+		Vec3d direction = client.player.getRotationVec(1.0f);
+
+		// Prüfe alle Bildschirme via Ray-AABB-Test (keine Block-Abhängigkeit mehr)
+		LocalScreenStore.LocalScreenData closest = null;
+		double closestDist = Double.MAX_VALUE;
+
+		for (LocalScreenStore.LocalScreenData screen : LocalScreenStore.getAllScreens()) {
+			if (testRayBox(eye, direction, reach, screen.pos1(), screen.pos2())) {
+				double dist = screen.pos1().getSquaredDistance(eye.x, eye.y, eye.z);
+				if (dist < closestDist) {
+					closestDist = dist;
+					closest = screen;
+				}
+			}
 		}
-		if (client.crosshairTarget.getType() != HitResult.Type.BLOCK) {
-			return Optional.empty();
+
+		if (closest != null) return Optional.of(closest);
+
+		// Fallback: Legacy-Prüfung via Block-Treffer
+		if (client.crosshairTarget instanceof BlockHitResult hit
+				&& client.crosshairTarget.getType() == HitResult.Type.BLOCK) {
+			return LocalScreenStore.findByAnchor(hit.getBlockPos());
 		}
-		return LocalScreenStore.findByAnchor(hit.getBlockPos());
+
+		return Optional.empty();
+	}
+
+	/**
+	 * Prüft ob ein Strahl (Ursprung + Richtung, max. Länge reach) die Bounding-Box
+	 * eines Bildschirms (pos1..pos2) schneidet (Slab-Methode / AABB-Ray-Test).
+	 */
+	private static boolean testRayBox(Vec3d eye, Vec3d dir, double reach,
+			BlockPos p1, BlockPos p2) {
+		double minX = Math.min(p1.getX(), p2.getX());
+		double minY = Math.min(p1.getY(), p2.getY());
+		double minZ = Math.min(p1.getZ(), p2.getZ());
+		double maxX = Math.max(p1.getX(), p2.getX()) + 1.0;
+		double maxY = Math.max(p1.getY(), p2.getY()) + 1.0;
+		double maxZ = Math.max(p1.getZ(), p2.getZ()) + 1.0;
+
+		double tNear = 0.0;
+		double tFar  = reach;
+
+		// X-Achse
+		if (Math.abs(dir.x) < 1e-9) {
+			if (eye.x < minX || eye.x > maxX) return false;
+		} else {
+			double t1 = (minX - eye.x) / dir.x;
+			double t2 = (maxX - eye.x) / dir.x;
+			if (t1 > t2) { double tmp = t1; t1 = t2; t2 = tmp; }
+			tNear = Math.max(tNear, t1);
+			tFar  = Math.min(tFar, t2);
+			if (tNear > tFar) return false;
+		}
+
+		// Y-Achse
+		if (Math.abs(dir.y) < 1e-9) {
+			if (eye.y < minY || eye.y > maxY) return false;
+		} else {
+			double t1 = (minY - eye.y) / dir.y;
+			double t2 = (maxY - eye.y) / dir.y;
+			if (t1 > t2) { double tmp = t1; t1 = t2; t2 = tmp; }
+			tNear = Math.max(tNear, t1);
+			tFar  = Math.min(tFar, t2);
+			if (tNear > tFar) return false;
+		}
+
+		// Z-Achse
+		if (Math.abs(dir.z) < 1e-9) {
+			if (eye.z < minZ || eye.z > maxZ) return false;
+		} else {
+			double t1 = (minZ - eye.z) / dir.z;
+			double t2 = (maxZ - eye.z) / dir.z;
+			if (t1 > t2) { double tmp = t1; t1 = t2; t2 = tmp; }
+			tNear = Math.max(tNear, t1);
+			tFar  = Math.min(tFar, t2);
+			if (tNear > tFar) return false;
+		}
+
+		return tFar > 0.0;
 	}
 
 	private static boolean isCameraAreaLoadedByAnyPlayer(MinecraftClient client, Vec3d cameraPos) {

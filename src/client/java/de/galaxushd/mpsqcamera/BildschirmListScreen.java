@@ -27,14 +27,21 @@ public class BildschirmListScreen extends Screen {
     }
 
     private void loadJoinedScreens() {
-        // TODO: Backend-Anfrage: Lade nur Bildschirme, die der Spieler erstellt hat ODER beigetreten ist
-        // Beispiel-Daten (später aus Backend):
-        // bildschirme.add(new BildschirmEntry("screen_1", "Mein erster Screen", true));
-        // bildschirme.add(new BildschirmEntry("screen_2", "Eingeladener Screen", false));
+        bildschirme.clear();
+        for (LocalScreenStore.LocalScreenData screen : LocalScreenStore.getAllScreens()) {
+            bildschirme.add(new BildschirmEntry(
+                    screen.id().toString(),
+                    screen.name(),
+                    true // Spieler hat diese Bildschirme selbst erstellt
+            ));
+        }
     }
 
     @Override
     protected void init() {
+        // Bildschirme aus lokalem Speicher laden
+        loadJoinedScreens();
+
         // Zurück-Button unten
         addDrawableChild(ButtonWidget.builder(
                 Text.literal("Zurück"),
