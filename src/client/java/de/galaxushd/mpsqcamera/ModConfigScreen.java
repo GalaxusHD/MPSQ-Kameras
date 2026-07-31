@@ -1,5 +1,6 @@
 package de.galaxushd.mpsqcamera;
 
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -135,7 +136,7 @@ public class ModConfigScreen extends Screen {
 		// ── Logo-Bereich ─────────────────────────────────────────────────────
 		context.fill(logoX - 12, logoTop - 10, logoX + LOGO_W + 12, logoTop + LOGO_H + 10, 0x55150505);
 		context.drawBorder(logoX - 12, logoTop - 10, LOGO_W + 24, LOGO_H + 20, MpsqTheme.WEINROT);
-		context.drawTexture(LOGO_TEXTURE, logoX, logoTop, 0.0F, 0.0F, LOGO_W, LOGO_H, LOGO_TEXTURE_W, LOGO_TEXTURE_H);
+		context.drawTexture(RenderPipelines.GUI_TEXTURED, LOGO_TEXTURE, logoX, logoTop, 0.0F, 0.0F, LOGO_W, LOGO_H, LOGO_TEXTURE_W, LOGO_TEXTURE_H);
 
 		// ── Mod-Titel unterhalb Logo ──────────────────────────────────────────
 		context.drawCenteredTextWithShadow(
