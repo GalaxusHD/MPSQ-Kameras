@@ -41,8 +41,6 @@ public final class ScreenCreationManager {
 
 	/** K – Hauptmenü des Mods */
 	private static KeyBinding hauptMenuKey;
-	/** O – Konfigurations-Screen für nahegelegene Bildschirme */
-	private static KeyBinding bildschirmConfigKey;
 
 	private static ViewSession activeViewSession;
 
@@ -52,12 +50,6 @@ public final class ScreenCreationManager {
 		hauptMenuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
 				"key.mpsqcamera.hauptmenu",
 				GLFW.GLFW_KEY_K,
-				"category.mpsqcamera.main"
-		));
-
-		bildschirmConfigKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-				"key.mpsqcamera.bildschirm_config",
-				GLFW.GLFW_KEY_O,
 				"category.mpsqcamera.main"
 		));
 
@@ -112,11 +104,6 @@ public final class ScreenCreationManager {
 			if (client.currentScreen == null) {
 				client.setScreen(new ModConfigScreen());
 			}
-		}
-
-		// O → Konfig für nächsten Bildschirm öffnen
-		while (bildschirmConfigKey.wasPressed()) {
-			openNearestScreenConfig(client, player);
 		}
 
 		wasUsePressedLastTick = usePressed;
@@ -435,14 +422,6 @@ public final class ScreenCreationManager {
 			return Registries.ITEM.get(identifier);
 		}
 		return Items.BLAZE_ROD;
-	}
-
-	private static void openNearestScreenConfig(MinecraftClient client, ClientPlayerEntity player) {
-		LocalScreenStore.findNearest(player.getPos(), 8.0).ifPresentOrElse(
-				screen -> client.setScreen(new ScreenConfigScreen(screen)),
-				() -> MpsqCameraClient.LOGGER.info(
-						"[MPSQ Kameras] Kein Bildschirm in der Nähe zum Konfigurieren.")
-		);
 	}
 
 	private record ViewSession(

@@ -73,7 +73,7 @@ public class ModConfigScreen extends Screen {
 		addDrawableChild(ButtonWidget.builder(
 				Text.translatable("gui.mpsqcamera.hauptmenu.einstellungen"),
 				b -> onEinstellungen()
-		).dimensions(cx - btnW / 2, btnY + 26, btnW, 20).build());
+		).dimensions(cx - btnW / 2, btnY + 30, btnW, 20).build());
 
 		// "Lizenz" – unten-links
 		addDrawableChild(ButtonWidget.builder(
