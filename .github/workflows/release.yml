@@ -1,0 +1,172 @@
+name: Release Fabric Mod
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-fabric-mod-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: '21'
+  JAVA_DISTRIBUTION: temurin
+  ARTIFACT_NAME: mpsqcamera-release
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
+
+      - name: Prepare build metadata
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="$(grep '^mod_version=' gradle.properties | cut -d'=' -f2-)"
+          fi
+
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "Resolved build version: ${VERSION}"
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Build with Gradle
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew clean build --info --stacktrace -Pmod_version="${{ steps.metadata.outputs.version }}"
+
+      - name: Collect release artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p release-artifacts
+          find build/libs -maxdepth 1 -type f -name '*.jar' \
+            ! -name '*-sources.jar' \
+            ! -name '*-dev.jar' \
+            -exec cp {} release-artifacts/ \;
+
+          if ! compgen -G 'release-artifacts/*.jar' > /dev/null; then
+            echo "No release JAR artifacts were produced." >&2
+            exit 1
+          fi
+
+          echo "Collected release artifacts:"
+          ls -lah release-artifacts
+
+      - name: Upload JAR artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: release-artifacts/*.jar
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4.1.8
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: release-artifacts
+
+      - name: Verify downloaded artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Release assets:"
+          ls -lah release-artifacts
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2.0.8
+        with:
+          name: MPSQ Camera Mod ${{ github.ref_name }}
+          files: release-artifacts/*.jar
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+
+  notify:
+    name: Optional Discord Notification
+    needs:
+      - build
+      - release
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Discord notification
+        if: ${{ secrets.DISCORD_WEBHOOK_URL != '' }}
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          RELEASE_RESULT: ${{ needs.release.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REF_NAME: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${BUILD_RESULT}" == "success" && ( "${RELEASE_RESULT}" == "success" || "${RELEASE_RESULT}" == "skipped" ) ]]; then
+            STATUS="success"
+            ICON="✅"
+          else
+            STATUS="failure"
+            ICON="❌"
+          fi
+
+          export STATUS ICON
+
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          payload = {
+              "content": (
+                  f"{os.environ['ICON']} Release Fabric Mod workflow finished with **{os.environ['STATUS']}** "
+                  f"for `{os.environ['REF_NAME']}`.\nBuild: `{os.environ['BUILD_RESULT']}` | "
+                  f"Release: `{os.environ['RELEASE_RESULT']}`\n{os.environ['RUN_URL']}"
+              )
+          }
+          request = urllib.request.Request(
+              os.environ["DISCORD_WEBHOOK_URL"],
+              data=json.dumps(payload).encode("utf-8"),
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+          with urllib.request.urlopen(request) as response:
+              print(f"Discord webhook responded with HTTP {response.status}")
+          PY
