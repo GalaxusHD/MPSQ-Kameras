@@ -37,22 +37,20 @@ public final class MpsqTheme {
     // ── Hilfsmethoden ────────────────────────────────────────────────────────
 
     /**
-     * Zeichnet den benutzerdefinierten Hintergrund-Gradient.
+     * Zeichnet den benutzerdefinierten Hintergrund.
      * Muss nach {@code super.renderBackground(...)} aufgerufen werden.
+     * Transparenter, neutraler dunkler Hintergrund – kein Rot-Ton mehr.
      */
     public static void drawBackground(DrawContext context, int width, int height) {
-        // Vertikaler Gradient: dunkles Weinrot-Grau → fast Schwarz
-        context.fillGradient(0, 0, width, height, 0xCC1A0808, 0xCC050000);
-        // Dunkelroter Außenrahmen
+        // Transparenter dunkelgrauer Hintergrund statt Rot-Ton
+        context.fillGradient(0, 0, width, height, 0x991A1A1A, 0x99050505);
+        // Roter Außenrahmen bleibt als Erkennungsmerkmal
         context.drawBorder(0, 0, width, height, DUNKELROT);
-        context.drawBorder(1, 1, width - 2, height - 2, 0x66350000);
+        context.drawBorder(1, 1, width - 2, height - 2, 0x44550000);
         // Obere rote Akzentlinie
         context.fill(3, 3, width - 3, 7, ROT);
         // Untere weinrote Akzentlinie
         context.fill(3, height - 7, width - 3, height - 3, WEINROT);
-        // Schmale seitliche Akzentlinien
-        context.fill(3, 7, 5, height - 7, 0x88AA1111);
-        context.fill(width - 5, 7, width - 3, height - 7, 0x88AA1111);
     }
 
     /**

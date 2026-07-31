@@ -2,7 +2,6 @@ package de.galaxushd.mpsqcamera;
 
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.screen.option.KeybindsScreen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
@@ -54,7 +53,7 @@ public class ModSettingsScreen extends Screen {
         // ── 2. Tasten-Belegung öffnen ────────────────────────────────────────
         addDrawableChild(ButtonWidget.builder(
                 Text.translatable("gui.mpsqcamera.einstellungen.tasten"),
-                b -> this.client.setScreen(new KeybindsScreen(this, this.client.options))
+                b -> this.client.setScreen(new ModKeybindsScreen(this))
         ).dimensions(cx - btnW / 2, y, btnW, 20).build());
         y += 36;
 
