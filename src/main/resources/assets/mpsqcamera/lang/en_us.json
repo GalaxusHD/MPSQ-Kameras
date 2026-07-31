@@ -2,7 +2,6 @@
   "category.mpsqcamera.main": "MPSQ Kameras",
 
   "key.mpsqcamera.hauptmenu": "Open Main Menu",
-  "key.mpsqcamera.bildschirm_config": "Configure Screen",
 
   "gui.mpsqcamera.hauptmenu.titel": "MPSQ Kameras",
   "gui.mpsqcamera.hauptmenu.logo_platzhalter": "[ Logo ]",
@@ -38,12 +37,6 @@
   "gui.mpsqcamera.auswahl.abgebrochen": "✘ Selection cancelled",
   "gui.mpsqcamera.auswahl.kein_block": "✘ No block targeted",
   "gui.mpsqcamera.auswahl.luft": "✘ Target block is air",
-
-  "gui.mpsqcamera.bildschirmconfig.titel": "Configure Screen",
-  "gui.mpsqcamera.bildschirmconfig.eingabemodus": "Input Mode",
-  "gui.mpsqcamera.bildschirmconfig.url": "URL",
-  "gui.mpsqcamera.bildschirmconfig.speichern": "Save",
-  "gui.mpsqcamera.bildschirmconfig.schliessen": "Close",
 
   "status.mpsqcamera.view_enter": "Camera view active (ESC to exit)",
   "status.mpsqcamera.view_exit": "Camera view ended",
