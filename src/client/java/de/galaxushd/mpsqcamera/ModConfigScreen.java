@@ -132,7 +132,7 @@ public class ModConfigScreen extends Screen {
 		int logoX      = cx - logoWidth / 2;
 		int logoY      = LOGO_PAD_TOP;
 
-		context.drawTexture(RenderPipelines.GUI_TEXTURED, LOGO_TEXTURE, logoX, logoY, logoWidth, logoHeight, 0, 0, LOGO_TEXTURE_W, LOGO_TEXTURE_H, LOGO_TEXTURE_W, LOGO_TEXTURE_H);
+		context.drawTexture(RenderPipelines.GUI_TEXTURED, LOGO_TEXTURE, logoX, logoY, 0, 0, logoWidth, logoHeight, LOGO_TEXTURE_W, LOGO_TEXTURE_H);
 	}
 
 	@Override
