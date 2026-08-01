@@ -76,9 +76,6 @@ public class ModSettingsScreen extends Screen {
 
     @Override
     public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
-        super.renderBackground(context, mouseX, mouseY, delta);
-        MpsqTheme.drawBackground(context, this.width, this.height);
-
         int panelW = 280;
         int panelH = 230;
         MpsqTheme.drawPanel(context,
@@ -93,11 +90,13 @@ public class ModSettingsScreen extends Screen {
 
         int cx   = this.width / 2;
         int btnW = 220;
+        int titleY = this.height / 2 - 96;
 
         // Titel
         context.drawCenteredTextWithShadow(
                 this.textRenderer, this.title,
-                cx, this.height / 2 - 80, MpsqTheme.TEXT_TITEL);
+                cx, titleY, MpsqTheme.TEXT_TITEL);
+        context.fill(cx - 120, titleY + 13, cx + 120, titleY + 14, 0x66888888);
 
         // Abschnitts-Beschriftungen (oberhalb der jeweiligen Widgets)
         int y = this.height / 2 - 64;
