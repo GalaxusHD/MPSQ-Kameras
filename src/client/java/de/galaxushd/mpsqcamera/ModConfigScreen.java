@@ -24,8 +24,8 @@ import net.minecraft.util.Identifier;
  *  └────────────────────────────────────┘  ← Weinrote Akzentlinie unten
  */
 public class ModConfigScreen extends Screen {
-	// Logo-Datei in textures/gui/logo_v2.png (Cache-busting Pfad)
-	private static final Identifier LOGO_TEXTURE = Identifier.of(MpsqCameraClient.MOD_ID, "textures/gui/logo_v2.png");
+	// Logo-Datei in textures/gui/mpsqtransparent.png
+	private static final Identifier LOGO_TEXTURE = Identifier.of(MpsqCameraClient.MOD_ID, "textures/gui/mpsqtransparent.png");
 
 	private static final int LOGO_TEXTURE_W = 512;
 	private static final int LOGO_TEXTURE_H = 128;
