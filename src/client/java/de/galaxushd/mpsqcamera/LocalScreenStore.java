@@ -4,6 +4,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -11,7 +12,11 @@ import java.util.UUID;
 
 public final class LocalScreenStore {
 	private static final List<LocalScreenData> SCREENS = new ArrayList<>();
+	private static final List<LocalGroupData> GROUPS = new ArrayList<>();
 	private static final double LOAD_RANGE = 48.0; // blocks
+	private static final String CODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+	private static final int GROUP_CODE_LENGTH = 6;
+	private static final SecureRandom RANDOM = new SecureRandom();
 
 	private LocalScreenStore() {}
 
@@ -25,6 +30,7 @@ public final class LocalScreenStore {
 				createdFrom,
 				ScreenInputType.LINK,
 				"",
+				null,
 				null
 		));
 	}
@@ -39,8 +45,68 @@ public final class LocalScreenStore {
 				new Vec3d(pos1.getX(), pos1.getY(), pos1.getZ()),
 				ScreenInputType.LINK,
 				"",
+				null,
 				null
 		));
+	}
+
+	/** Entfernt einen Bildschirm. Wenn er in einer Gruppe ist, wird die ganze Gruppe gelöscht. */
+	public static void removeScreen(UUID id) {
+		LocalScreenData screen = findById(id).orElse(null);
+		if (screen == null) return;
+
+		if (screen.groupId() != null) {
+			removeGroup(screen.groupId());
+		} else {
+			SCREENS.removeIf(s -> s.id().equals(id));
+		}
+	}
+
+	/** Erstellt eine neue Gruppe mit den angegebenen Bildschirmen und einem gemeinsamen Code. */
+	public static LocalGroupData createGroup(List<UUID> screenIds) {
+		String sharedCode = generateGroupCode();
+		UUID groupId = UUID.randomUUID();
+		LocalGroupData group = new LocalGroupData(groupId, sharedCode);
+		GROUPS.add(group);
+
+		for (int i = 0; i < SCREENS.size(); i++) {
+			LocalScreenData s = SCREENS.get(i);
+			if (screenIds.contains(s.id())) {
+				SCREENS.set(i, new LocalScreenData(
+						s.id(), s.pos1(), s.pos2(), s.name(), s.createdFrom(),
+						s.inputType(), s.url(), s.cameraId(), groupId
+				));
+			}
+		}
+		return group;
+	}
+
+	/** Löscht eine Gruppe und alle Bildschirme, die zu ihr gehören. */
+	public static void removeGroup(UUID groupId) {
+		GROUPS.removeIf(g -> g.id().equals(groupId));
+		SCREENS.removeIf(s -> groupId.equals(s.groupId()));
+	}
+
+	/** Gibt die Gruppe eines Bildschirms zurück (Optional.empty() wenn nicht in Gruppe). */
+	public static Optional<LocalGroupData> getGroupForScreen(UUID screenId) {
+		LocalScreenData screen = findById(screenId).orElse(null);
+		if (screen == null || screen.groupId() == null) return Optional.empty();
+		UUID groupId = screen.groupId();
+		return GROUPS.stream().filter(g -> g.id().equals(groupId)).findFirst();
+	}
+
+	/** Gibt alle Gruppen zurück. */
+	public static List<LocalGroupData> getAllGroups() {
+		return List.copyOf(GROUPS);
+	}
+
+	/** Gibt alle Bildschirme einer Gruppe zurück. */
+	public static List<LocalScreenData> getScreensInGroup(UUID groupId) {
+		List<LocalScreenData> result = new ArrayList<>();
+		for (LocalScreenData s : SCREENS) {
+			if (groupId.equals(s.groupId())) result.add(s);
+		}
+		return result;
 	}
 
 	public static List<LocalScreenData> getInRange(Vec3d playerPos) {
@@ -97,14 +163,23 @@ public final class LocalScreenStore {
 						s.createdFrom(),
 						mode,
 						url == null ? "" : url,
-						cameraId
+						cameraId,
+						s.groupId()
 				));
 				return;
 			}
 		}
 	}
 
-	// ── Enum ────────────────────────────────────────────────────────────────
+	private static String generateGroupCode() {
+		StringBuilder sb = new StringBuilder(GROUP_CODE_LENGTH);
+		for (int i = 0; i < GROUP_CODE_LENGTH; i++) {
+			sb.append(CODE_CHARS.charAt(RANDOM.nextInt(CODE_CHARS.length())));
+		}
+		return sb.toString();
+	}
+
+	// ── Enums ────────────────────────────────────────────────────────────────
 
 	public enum ScreenInputType {
 		LINK("Link"),
@@ -117,7 +192,24 @@ public final class LocalScreenStore {
 		public Text text() { return Text.literal(label); }
 	}
 
-	// ── Record ───────────────────────────────────────────────────────────────
+	public enum DeleteBehavior {
+		NIE("Nie"),
+		CREATOR_OFFLINE("Wenn Creator off"),
+		NICHT_GELADEN("Wenn nicht geladen");
+
+		private final String label;
+
+		DeleteBehavior(String label) { this.label = label; }
+
+		public String getLabel() { return label; }
+
+		public DeleteBehavior next() {
+			DeleteBehavior[] values = values();
+			return values[(this.ordinal() + 1) % values.length];
+		}
+	}
+
+	// ── Records ───────────────────────────────────────────────────────────────
 
 	public record LocalScreenData(
 			UUID id,
@@ -127,6 +219,12 @@ public final class LocalScreenStore {
 			Vec3d createdFrom,
 			ScreenInputType inputType,
 			String url,
-			UUID cameraId
+			UUID cameraId,
+			UUID groupId
+	) {}
+
+	public record LocalGroupData(
+			UUID id,
+			String sharedCode
 	) {}
 }
