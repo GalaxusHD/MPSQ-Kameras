@@ -62,7 +62,7 @@ public class BildschirmGroupingScreen extends Screen {
                 this.textRenderer, this.title, cx, startY, MpsqTheme.TEXT_TITEL);
         startY += 16;
 
-        context.fill(cx - 130, startY, cx + 130, startY + 1, MpsqTheme.WEINROT);
+        context.fill(cx - 130, startY, cx + 130, startY + 1, 0x44FFFFFF);
         startY += 20;
 
         // Gruppen-Liste

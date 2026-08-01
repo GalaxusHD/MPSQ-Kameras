@@ -23,8 +23,8 @@ public final class MpsqTheme {
     public static final int DUNKELGRAU   = 0xFF1A1A1A;
     /** Fast Schwarz – Hintergrund unten */
     public static final int SCHWARZ      = 0xFF050505;
-    /** Halbtransparentes dunkles Weinrot für Panels */
-    public static final int PANEL_BG     = 0x99150505;
+    /** Halbtransparentes dunkles Grau für Panels */
+    public static final int PANEL_BG     = 0x99101010;
     /** Panel-Rahmen (Weinrot) */
     public static final int RAHMEN       = 0xFF7A0020;
     /** Titel-Text – helles Rot */
