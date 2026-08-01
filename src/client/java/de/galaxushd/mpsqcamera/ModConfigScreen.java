@@ -115,19 +115,19 @@ public class ModConfigScreen extends Screen {
 
 	@Override
 	public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
-		super.renderBackground(context, mouseX, mouseY, delta);
-		MpsqTheme.drawBackground(context, this.width, this.height);
+		// Absichtlich leer: kein grauer Overlay-Hintergrund im Hauptmenü.
 	}
 
 	@Override
 	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-		int cx       = this.width / 2;
-		int logoSize = Math.min(this.height / 2 - LOGO_PAD_TOP - 16, this.width - 16);
-		int logoX    = cx - logoSize / 2;
-		int logoY    = LOGO_PAD_TOP;
+		int cx        = this.width / 2;
+		int logoWidth = Math.min(this.width - 16, LOGO_TEXTURE_W);
+		int logoHeight = Math.max(1, logoWidth * LOGO_TEXTURE_H / LOGO_TEXTURE_W);
+		int logoX     = cx - logoWidth / 2;
+		int logoY     = LOGO_PAD_TOP;
 
-		// ── Logo (quadratisch, obere Hälfte) ─────────────────────────────────
-		context.drawTexture(RenderPipelines.GUI_TEXTURED, LOGO_TEXTURE, logoX, logoY, 0.0F, 0.0F, logoSize, logoSize, LOGO_TEXTURE_W, LOGO_TEXTURE_H);
+		// ── Logo (vollständiges Banner mit korrektem Seitenverhältnis) ───────
+		context.drawTexture(RenderPipelines.GUI_TEXTURED, LOGO_TEXTURE, logoX, logoY, 0, 0, logoWidth, logoHeight, LOGO_TEXTURE_W, LOGO_TEXTURE_H, LOGO_TEXTURE_W, LOGO_TEXTURE_H);
 
 		super.render(context, mouseX, mouseY, delta);
 	}
