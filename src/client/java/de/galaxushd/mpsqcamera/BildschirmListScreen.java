@@ -68,7 +68,7 @@ public class BildschirmListScreen extends Screen {
         startY += 16;
 
         // Trennlinie
-        context.fill(cx - 130, startY, cx + 130, startY + 1, MpsqTheme.WEINROT);
+        context.fill(cx - 130, startY, cx + 130, startY + 1, 0x44FFFFFF);
         startY += 10;
 
         // Wenn keine Bildschirme

@@ -5,13 +5,20 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
-import org.lwjgl.glfw.GLFW;
+
+import java.security.SecureRandom;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Detail-Menü für einen einzelnen Bildschirm.
  * Unterscheidung zwischen Ersteller und Besucher/Zuschauer.
  */
 public class BildschirmDetailScreen extends Screen {
+    private static final String CODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    private static final int ACTIVATION_CODE_LENGTH = 5;
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private static final Set<String> GENERATED_CODES = new HashSet<>();
 
     private final Screen parent;
     private final String bildschirmId;
@@ -20,7 +27,7 @@ public class BildschirmDetailScreen extends Screen {
 
     // Creator-only
     private boolean isCameraMode = true; // default = Kamera
-    private String activationCode = "ABC123XYZ"; // TODO: Aus Daten laden
+    private String activationCode = generateUniqueActivationCode();
     private String streamUrl = "";
     private String deleteBehavior = "nie"; // "verlassen", "alle", "nie"
     private TextFieldWidget streamUrlField;
@@ -36,58 +43,61 @@ public class BildschirmDetailScreen extends Screen {
     @Override
     protected void init() {
         int cx = this.width / 2;
-        int buttonY = this.height / 2 - 30;
+        int buttonY = this.height / 2 - 56;
+        int buttonX = cx - 90;
+        int buttonW = 180;
+        int gapY = 26;
 
         if (isCreator) {
             // ── CREATOR MODE ──────────────────────────────────────────────
             // Kamera/Kino Toggle
             addDrawableChild(ButtonWidget.builder(
-                    Text.literal(isCameraMode ? "[Kamera]" : "[Kino]"),
+                    Text.literal("Modus: " + (isCameraMode ? "Kamera" : "Kino")),
                     b -> toggleCameraKino()
-            ).dimensions(cx - 60, buttonY, 120, 20).build());
-            buttonY += 30;
+            ).dimensions(buttonX, buttonY, buttonW, 20).build());
+            buttonY += gapY;
 
             // Stream-URL Input (nur im Kino-Modus sichtbar)
             if (!isCameraMode) {
-                streamUrlField = new TextFieldWidget(this.textRenderer, cx - 100, buttonY, 200, 20, Text.literal("URL"));
+                streamUrlField = new TextFieldWidget(this.textRenderer, buttonX, buttonY, buttonW, 20, Text.literal("URL"));
                 streamUrlField.setText(streamUrl);
                 addDrawableChild(streamUrlField);
-                buttonY += 30;
+                buttonY += gapY;
             }
 
             // Aktivierungscode (klickbar zum Kopieren)
             addDrawableChild(ButtonWidget.builder(
                     Text.literal("Code: " + activationCode),
                     b -> copyActivationCode()
-            ).dimensions(cx - 80, buttonY, 160, 20).build());
-            buttonY += 30;
+            ).dimensions(buttonX, buttonY, buttonW, 20).build());
+            buttonY += gapY;
 
             // Gruppierung
             addDrawableChild(ButtonWidget.builder(
                     Text.literal("Gruppieren..."),
                     b -> openGroupingMenu()
-            ).dimensions(cx - 80, buttonY, 160, 20).build());
-            buttonY += 30;
+            ).dimensions(buttonX, buttonY, buttonW, 20).build());
+            buttonY += gapY;
 
             // Lösch-Verhalten Toggle (3 Modi)
             addDrawableChild(ButtonWidget.builder(
                     Text.literal("Löschen: " + getDeleteBehaviorLabel()),
                     b -> cycleDeleteBehavior()
-            ).dimensions(cx - 80, buttonY, 160, 20).build());
-            buttonY += 30;
+            ).dimensions(buttonX, buttonY, buttonW, 20).build());
+            buttonY += gapY;
 
-            // Bildschirm/Gruppe löschen
+            // Bildschirm löschen (in beiden Modi: Kamera + Kino)
             addDrawableChild(ButtonWidget.builder(
                     Text.literal("Bildschirm löschen"),
                     b -> deleteScreen()
-            ).dimensions(cx - 80, buttonY, 160, 20).build());
+            ).dimensions(buttonX, buttonY, buttonW, 20).build());
         } else {
             // ── GUEST MODE ────────────────────────────────────────────────
             // Nur Anzeige + Buttons zum Zurück/Verlassen
             addDrawableChild(ButtonWidget.builder(
                     Text.literal("Bildschirm verlassen"),
                     b -> leaveScreen()
-            ).dimensions(cx - 80, buttonY, 160, 20).build());
+            ).dimensions(buttonX, buttonY, buttonW, 20).build());
         }
 
         // Zurück-Button (beide Modi)
@@ -145,6 +155,19 @@ public class BildschirmDetailScreen extends Screen {
         this.client.setScreen(parent);
     }
 
+    private static synchronized String generateUniqueActivationCode() {
+        String code;
+        do {
+            StringBuilder builder = new StringBuilder(ACTIVATION_CODE_LENGTH);
+            for (int i = 0; i < ACTIVATION_CODE_LENGTH; i++) {
+                builder.append(CODE_CHARS.charAt(RANDOM.nextInt(CODE_CHARS.length())));
+            }
+            code = builder.toString();
+        } while (GENERATED_CODES.contains(code));
+        GENERATED_CODES.add(code);
+        return code;
+    }
+
     @Override
     public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
         super.renderBackground(context, mouseX, mouseY, delta);
@@ -164,7 +187,7 @@ public class BildschirmDetailScreen extends Screen {
         startY += 16;
 
         // Trennlinie
-        context.fill(cx - 130, startY, cx + 130, startY + 1, MpsqTheme.WEINROT);
+        context.fill(cx - 130, startY, cx + 130, startY + 1, 0x44FFFFFF);
     }
 
     @Override

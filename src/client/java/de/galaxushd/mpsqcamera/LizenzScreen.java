@@ -84,7 +84,7 @@ public class LizenzScreen extends Screen {
         startY += 16;
 
         // Trennlinie unter Titel
-        context.fill(cx - 130, startY, cx + 130, startY + 1, MpsqTheme.WEINROT);
+        context.fill(cx - 130, startY, cx + 130, startY + 1, 0x44FFFFFF);
         startY += 10;
 
         // Lizenzzeilen (nicht editierbar – nur Anzeige, scrollbar)

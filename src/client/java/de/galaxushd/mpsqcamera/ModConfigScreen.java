@@ -24,8 +24,8 @@ import net.minecraft.util.Identifier;
  *  └────────────────────────────────────┘  ← Weinrote Akzentlinie unten
  */
 public class ModConfigScreen extends Screen {
-	// Logo: logo.png muss in textures/gui/ abgelegt werden
-	private static final Identifier LOGO_TEXTURE = Identifier.of(MpsqCameraClient.MOD_ID, "textures/gui/logo.png");
+	// Logo-Datei in textures/gui/logo_v2.png (Cache-busting Pfad)
+	private static final Identifier LOGO_TEXTURE = Identifier.of(MpsqCameraClient.MOD_ID, "textures/gui/logo_v2.png");
 
 	private static final int LOGO_TEXTURE_W = 512;
 	private static final int LOGO_TEXTURE_H = 128;
@@ -72,7 +72,7 @@ public class ModConfigScreen extends Screen {
 		addDrawableChild(ButtonWidget.builder(
 				Text.translatable("gui.mpsqcamera.hauptmenu.einstellungen"),
 				b -> onEinstellungen()
-		).dimensions(cx - btnW / 2, btnY + 38, btnW, 20).build());
+		).dimensions(cx - btnW / 2, btnY + 28, btnW, 20).build());
 
 		// "Lizenz" – unten-links
 		addDrawableChild(ButtonWidget.builder(

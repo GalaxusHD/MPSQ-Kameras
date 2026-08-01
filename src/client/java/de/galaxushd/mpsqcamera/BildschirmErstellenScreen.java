@@ -173,7 +173,7 @@ public class BildschirmErstellenScreen extends Screen {
                 cx, titleY + 12, MpsqTheme.TEXT_GEDAEMPT);
 
         // Trennlinie
-        context.fill(cx - 120, titleY + 25, cx + 120, titleY + 26, MpsqTheme.WEINROT);
+        context.fill(cx - 120, titleY + 25, cx + 120, titleY + 26, 0x44FFFFFF);
 
         // Feld-Beschriftung "Name"
         context.drawTextWithShadow(
