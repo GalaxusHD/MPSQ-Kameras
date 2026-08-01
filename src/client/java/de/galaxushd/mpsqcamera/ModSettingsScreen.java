@@ -77,10 +77,10 @@ public class ModSettingsScreen extends Screen {
     @Override
     public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
         int panelW = 280;
-        int panelH = 230;
+        int panelH = 260;
         MpsqTheme.drawPanel(context,
                 (this.width - panelW) / 2,
-                this.height / 2 - 84,
+                this.height / 2 - 110,
                 panelW, panelH);
     }
 
@@ -90,7 +90,7 @@ public class ModSettingsScreen extends Screen {
 
         int cx   = this.width / 2;
         int btnW = 220;
-        int titleY = this.height / 2 - 96;
+        int titleY = this.height / 2 - 102;
 
         // Titel
         context.drawCenteredTextWithShadow(
