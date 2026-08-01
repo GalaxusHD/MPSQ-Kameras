@@ -4,33 +4,29 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Menü zum Verwalten von Bildschirm-Gruppen.
- * - Erstelle neue Gruppen
- * - Ordne Bildschirme zu/ab
- * - Auto-Delete von Gruppen bei nur 1 Screen
+ * Übersicht aller Bildschirm-Gruppen.
+ * - Erstelle neue Gruppen über den GroupCreationScreen
+ * - Zeigt bestehende Gruppen mit Code und Anzahl Bildschirme
  */
 public class BildschirmGroupingScreen extends Screen {
 
     private final Screen parent;
-    private List<GroupEntry> groups = new ArrayList<>();
     private int scrollOffset = 0;
 
     public BildschirmGroupingScreen(Screen parent) {
         super(Text.literal("Bildschirme Gruppieren"));
         this.parent = parent;
-        // TODO: Gruppen aus Daten laden
     }
 
     @Override
     protected void init() {
-        // Neue Gruppe erstellen
+        // Neue Gruppe erstellen → öffnet GroupCreationScreen
         addDrawableChild(ButtonWidget.builder(
                 Text.literal("Neue Gruppe"),
-                b -> createNewGroup()
+                b -> this.client.setScreen(new GroupCreationScreen(this))
         ).dimensions(this.width / 2 - 70, 40, 140, 20).build());
 
         // Zurück-Button
@@ -38,11 +34,6 @@ public class BildschirmGroupingScreen extends Screen {
                 Text.literal("Zurück"),
                 b -> this.client.setScreen(parent)
         ).dimensions(this.width / 2 - 75, this.height - 36, 150, 20).build());
-    }
-
-    private void createNewGroup() {
-        MpsqCameraClient.LOGGER.info("[MPSQ] Neue Gruppe erstellt.");
-        // TODO: Neue Gruppe erstellen & Editor öffnen
     }
 
     @Override
@@ -63,18 +54,32 @@ public class BildschirmGroupingScreen extends Screen {
         startY += 16;
 
         context.fill(cx - 130, startY, cx + 130, startY + 1, 0x44FFFFFF);
-        startY += 20;
+        startY += 16;
+
+        List<LocalScreenStore.LocalGroupData> groups = LocalScreenStore.getAllGroups();
+
+        if (groups.isEmpty()) {
+            context.drawCenteredTextWithShadow(
+                    this.textRenderer,
+                    Text.literal("Keine Gruppen vorhanden."),
+                    cx, startY + 10, MpsqTheme.TEXT_GEDAEMPT);
+            return;
+        }
 
         // Gruppen-Liste
         int lineY = startY - scrollOffset;
-        for (GroupEntry group : groups) {
-            if (lineY > startY && lineY < this.height - 50) {
-                context.drawCenteredTextWithShadow(
-                        this.textRenderer,
-                        Text.literal(group.getName() + " (" + group.getScreenCount() + " Screens)"),
-                        cx, lineY, MpsqTheme.TEXT_NORMAL);
+        int listBottom = this.height - 50;
+
+        for (LocalScreenStore.LocalGroupData group : groups) {
+            if (lineY < startY || lineY > listBottom) {
+                lineY += 18;
+                continue;
             }
-            lineY += 16;
+            List<LocalScreenStore.LocalScreenData> screens = LocalScreenStore.getScreensInGroup(group.id());
+            String label = "Code: " + group.sharedCode() + "  (" + screens.size() + " Bildschirme)";
+            context.drawCenteredTextWithShadow(
+                    this.textRenderer, Text.literal(label), cx, lineY, MpsqTheme.TEXT_NORMAL);
+            lineY += 18;
         }
     }
 
@@ -87,21 +92,4 @@ public class BildschirmGroupingScreen extends Screen {
 
     @Override
     public boolean shouldPause() { return false; }
-
-    // ── Hilfklasse ──────────────────────────────────────────────────────────
-    public static class GroupEntry {
-        private String id;
-        private String name;
-        private int screenCount;
-
-        public GroupEntry(String id, String name, int screenCount) {
-            this.id = id;
-            this.name = name;
-            this.screenCount = screenCount;
-        }
-
-        public String getId() { return id; }
-        public String getName() { return name; }
-        public int getScreenCount() { return screenCount; }
-    }
 }

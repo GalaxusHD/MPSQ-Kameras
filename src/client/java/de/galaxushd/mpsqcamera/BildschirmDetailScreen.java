@@ -1,24 +1,20 @@
 package de.galaxushd.mpsqcamera;
 
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.ConfirmScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
 
-import java.security.SecureRandom;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Detail-Menü für einen einzelnen Bildschirm.
  * Unterscheidung zwischen Ersteller und Besucher/Zuschauer.
  */
 public class BildschirmDetailScreen extends Screen {
-    private static final String CODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    private static final int ACTIVATION_CODE_LENGTH = 5;
-    private static final SecureRandom RANDOM = new SecureRandom();
-    private static final Set<String> GENERATED_CODES = new HashSet<>();
 
     private final Screen parent;
     private final String bildschirmId;
@@ -27,9 +23,9 @@ public class BildschirmDetailScreen extends Screen {
 
     // Creator-only
     private boolean isCameraMode = true; // default = Kamera
-    private String activationCode = generateUniqueActivationCode();
+    private String activationCode;
     private String streamUrl = "";
-    private String deleteBehavior = "nie"; // "verlassen", "alle", "nie"
+    private LocalScreenStore.DeleteBehavior deleteBehavior = LocalScreenStore.DeleteBehavior.NIE;
     private TextFieldWidget streamUrlField;
 
     public BildschirmDetailScreen(Screen parent, String bildschirmId, String name, boolean isCreator) {
@@ -38,10 +34,26 @@ public class BildschirmDetailScreen extends Screen {
         this.bildschirmId = bildschirmId;
         this.bildschirmName = name;
         this.isCreator = isCreator;
+        // Zeige den gemeinsamen Gruppencode, falls vorhanden
+        this.activationCode = resolveActivationCode(bildschirmId);
+    }
+
+    /** Gibt den Code zurück: Gruppencode wenn in Gruppe, sonst Screen-eigenen Code. */
+    private static String resolveActivationCode(String screenIdStr) {
+        try {
+            UUID id = UUID.fromString(screenIdStr);
+            Optional<LocalScreenStore.LocalGroupData> group = LocalScreenStore.getGroupForScreen(id);
+            return group.map(LocalScreenStore.LocalGroupData::sharedCode).orElse("-----");
+        } catch (IllegalArgumentException e) {
+            return "-----";
+        }
     }
 
     @Override
     protected void init() {
+        // Aktivierungscode bei jedem init() aktualisieren (z.B. nach Gruppierung)
+        activationCode = resolveActivationCode(bildschirmId);
+
         int cx = this.width / 2;
         int buttonY = this.height / 2 - 56;
         int buttonX = cx - 90;
@@ -79,9 +91,9 @@ public class BildschirmDetailScreen extends Screen {
             ).dimensions(buttonX, buttonY, buttonW, 20).build());
             buttonY += gapY;
 
-            // Lösch-Verhalten Toggle (3 Modi)
+            // Lösch-Verhalten Toggle (3 Modi) – aktualisiert sich nach Klick
             addDrawableChild(ButtonWidget.builder(
-                    Text.literal("Löschen: " + getDeleteBehaviorLabel()),
+                    Text.literal("Löschen: " + deleteBehavior.getLabel()),
                     b -> cycleDeleteBehavior()
             ).dimensions(buttonX, buttonY, buttonW, 20).build());
             buttonY += gapY;
@@ -89,7 +101,7 @@ public class BildschirmDetailScreen extends Screen {
             // Bildschirm löschen (in beiden Modi: Kamera + Kino)
             addDrawableChild(ButtonWidget.builder(
                     Text.literal("Bildschirm löschen"),
-                    b -> deleteScreen()
+                    b -> confirmDeleteScreen()
             ).dimensions(buttonX, buttonY, buttonW, 20).build());
         } else {
             // ── GUEST MODE ────────────────────────────────────────────────
@@ -115,22 +127,10 @@ public class BildschirmDetailScreen extends Screen {
         clearAndInit();
     }
 
+    /** Wechselt den Löschmodus und aktualisiert sofort die Anzeige. */
     private void cycleDeleteBehavior() {
-        if (deleteBehavior.equals("nie")) {
-            deleteBehavior = "verlassen";
-        } else if (deleteBehavior.equals("verlassen")) {
-            deleteBehavior = "alle";
-        } else {
-            deleteBehavior = "nie";
-        }
-    }
-
-    private String getDeleteBehaviorLabel() {
-        return switch (deleteBehavior) {
-            case "verlassen" -> "Nach Verlassen";
-            case "alle" -> "Wenn alle weg";
-            default -> "Nie";
-        };
+        deleteBehavior = deleteBehavior.next();
+        clearAndInit();
     }
 
     private void copyActivationCode() {
@@ -143,29 +143,57 @@ public class BildschirmDetailScreen extends Screen {
         this.client.setScreen(new BildschirmGroupingScreen(this));
     }
 
+    /** Öffnet einen Bestätigungs-Dialog bevor der Bildschirm gelöscht wird. */
+    private void confirmDeleteScreen() {
+        boolean isInGroup = isScreenInGroup();
+        String confirmText = isInGroup
+                ? "Bildschirm '" + bildschirmName + "' ist Teil einer Gruppe.\nDie gesamte Gruppe wird gelöscht!"
+                : "Bildschirm '" + bildschirmName + "' wirklich löschen?";
+
+        this.client.setScreen(new ConfirmScreen(
+                confirmed -> {
+                    if (confirmed) {
+                        deleteScreen();
+                    } else {
+                        this.client.setScreen(this);
+                    }
+                },
+                Text.literal("Bildschirm löschen"),
+                Text.literal(confirmText),
+                Text.literal("Ja, löschen"),
+                Text.literal("Abbrechen")
+        ));
+    }
+
+    /** Löscht den Bildschirm (oder die ganze Gruppe falls in Gruppe). */
     private void deleteScreen() {
-        MpsqCameraClient.LOGGER.info("[MPSQ] Bildschirm " + bildschirmName + " gelöscht.");
-        // TODO: Bildschirm löschen & zur Liste zurück
+        try {
+            UUID id = UUID.fromString(bildschirmId);
+            boolean wasInGroup = isScreenInGroup();
+            LocalScreenStore.removeScreen(id);
+            if (wasInGroup) {
+                MpsqCameraClient.LOGGER.info("[MPSQ] Gruppe von Bildschirm " + bildschirmName + " gelöscht.");
+            } else {
+                MpsqCameraClient.LOGGER.info("[MPSQ] Bildschirm " + bildschirmName + " gelöscht.");
+            }
+        } catch (IllegalArgumentException e) {
+            MpsqCameraClient.LOGGER.warn("[MPSQ] Ungültige Bildschirm-ID: " + bildschirmId);
+        }
         this.client.setScreen(parent);
+    }
+
+    private boolean isScreenInGroup() {
+        try {
+            UUID id = UUID.fromString(bildschirmId);
+            return LocalScreenStore.getGroupForScreen(id).isPresent();
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     private void leaveScreen() {
         MpsqCameraClient.LOGGER.info("[MPSQ] Besucher verlässt Bildschirm " + bildschirmName);
-        // TODO: Bildschirm als nicht mehr sichtbar markieren
         this.client.setScreen(parent);
-    }
-
-    private static synchronized String generateUniqueActivationCode() {
-        String code;
-        do {
-            StringBuilder builder = new StringBuilder(ACTIVATION_CODE_LENGTH);
-            for (int i = 0; i < ACTIVATION_CODE_LENGTH; i++) {
-                builder.append(CODE_CHARS.charAt(RANDOM.nextInt(CODE_CHARS.length())));
-            }
-            code = builder.toString();
-        } while (GENERATED_CODES.contains(code));
-        GENERATED_CODES.add(code);
-        return code;
     }
 
     @Override
