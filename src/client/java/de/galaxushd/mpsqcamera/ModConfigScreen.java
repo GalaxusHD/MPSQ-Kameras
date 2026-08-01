@@ -24,13 +24,12 @@ import net.minecraft.util.Identifier;
  *  └────────────────────────────────────┘  ← Weinrote Akzentlinie unten
  */
 public class ModConfigScreen extends Screen {
-	// Logo: mpsqtransparent.png muss in textures/gui/ abgelegt werden
-	private static final Identifier LOGO_TEXTURE = Identifier.of(MpsqCameraClient.MOD_ID, "textures/gui/mpsqtransparent.png");
+	// Logo: logo.png muss in textures/gui/ abgelegt werden
+	private static final Identifier LOGO_TEXTURE = Identifier.of(MpsqCameraClient.MOD_ID, "textures/gui/logo.png");
 
 	private static final int LOGO_TEXTURE_W = 512;
 	private static final int LOGO_TEXTURE_H = 128;
-	private static final int LOGO_W = 256;
-	private static final int LOGO_H = 64;
+	private static final int LOGO_PAD_TOP   = 8;
 	private static final int CODE_INPUT_W = 180;
 	private static final int CODE_INPUT_H = 20;
 
@@ -73,7 +72,7 @@ public class ModConfigScreen extends Screen {
 		addDrawableChild(ButtonWidget.builder(
 				Text.translatable("gui.mpsqcamera.hauptmenu.einstellungen"),
 				b -> onEinstellungen()
-		).dimensions(cx - btnW / 2, btnY + 30, btnW, 20).build());
+		).dimensions(cx - btnW / 2, btnY + 38, btnW, 20).build());
 
 		// "Lizenz" – unten-links
 		addDrawableChild(ButtonWidget.builder(
@@ -122,14 +121,13 @@ public class ModConfigScreen extends Screen {
 
 	@Override
 	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-		int cx      = this.width / 2;
-		int logoTop = Math.max(12, this.height / 4 - LOGO_H / 2);
-		int logoX   = cx - LOGO_W / 2;
+		int cx       = this.width / 2;
+		int logoSize = Math.min(this.height / 2 - LOGO_PAD_TOP - 16, this.width - 16);
+		int logoX    = cx - logoSize / 2;
+		int logoY    = LOGO_PAD_TOP;
 
-		// ── Logo-Bereich (obere Hälfte) ───────────────────────────────────────
-		context.fill(logoX - 12, logoTop - 10, logoX + LOGO_W + 12, logoTop + LOGO_H + 10, 0x44150505);
-		context.drawBorder(logoX - 12, logoTop - 10, LOGO_W + 24, LOGO_H + 20, MpsqTheme.WEINROT);
-		context.drawTexture(RenderPipelines.GUI_TEXTURED, LOGO_TEXTURE, logoX, logoTop, 0.0F, 0.0F, LOGO_W, LOGO_H, LOGO_TEXTURE_W, LOGO_TEXTURE_H);
+		// ── Logo (quadratisch, obere Hälfte) ─────────────────────────────────
+		context.drawTexture(RenderPipelines.GUI_TEXTURED, LOGO_TEXTURE, logoX, logoY, 0.0F, 0.0F, logoSize, logoSize, LOGO_TEXTURE_W, LOGO_TEXTURE_H);
 
 		super.render(context, mouseX, mouseY, delta);
 	}

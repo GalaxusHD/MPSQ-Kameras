@@ -42,15 +42,8 @@ public final class MpsqTheme {
      * Transparenter, neutraler dunkler Hintergrund – kein Rot-Ton mehr.
      */
     public static void drawBackground(DrawContext context, int width, int height) {
-        // Transparenter dunkelgrauer Hintergrund statt Rot-Ton
+        // Transparenter dunkelgrauer Hintergrund
         context.fillGradient(0, 0, width, height, 0x991A1A1A, 0x99050505);
-        // Roter Außenrahmen bleibt als Erkennungsmerkmal
-        context.drawBorder(0, 0, width, height, DUNKELROT);
-        context.drawBorder(1, 1, width - 2, height - 2, 0x44550000);
-        // Obere rote Akzentlinie
-        context.fill(3, 3, width - 3, 7, ROT);
-        // Untere weinrote Akzentlinie
-        context.fill(3, height - 7, width - 3, height - 3, WEINROT);
     }
 
     /**
@@ -58,6 +51,5 @@ public final class MpsqTheme {
      */
     public static void drawPanel(DrawContext context, int x, int y, int w, int h) {
         context.fill(x, y, x + w, y + h, PANEL_BG);
-        context.drawBorder(x, y, w, h, RAHMEN);
     }
 }
