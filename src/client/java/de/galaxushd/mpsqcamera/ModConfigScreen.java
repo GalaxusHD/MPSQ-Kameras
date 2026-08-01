@@ -115,21 +115,24 @@ public class ModConfigScreen extends Screen {
 
 	@Override
 	public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
-		// Absichtlich leer: kein grauer Overlay-Hintergrund im Hauptmenü.
+		// Dunkler Hintergrund-Gradient damit das Logo sichtbar ist
+		context.fillGradient(0, 0, this.width, this.height, 0xCC1A1A1A, 0xCC050505);
 	}
 
 	@Override
 	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-		int cx        = this.width / 2;
-		int logoWidth = Math.min(this.width - 16, LOGO_TEXTURE_W);
-		int logoHeight = Math.max(1, logoWidth * LOGO_TEXTURE_H / LOGO_TEXTURE_W);
-		int logoX     = cx - logoWidth / 2;
-		int logoY     = LOGO_PAD_TOP;
-
-		// ── Logo (vollständiges Banner mit korrektem Seitenverhältnis) ───────
-		context.drawTexture(RenderPipelines.GUI_TEXTURED, LOGO_TEXTURE, logoX, logoY, logoWidth, logoHeight, 0, 0, LOGO_TEXTURE_W, LOGO_TEXTURE_H, LOGO_TEXTURE_W, LOGO_TEXTURE_H);
-
+		// 1. Hintergrund + Kinder-Elemente (Buttons, TextFields) zuerst rendern
 		super.render(context, mouseX, mouseY, delta);
+
+		// 2. Logo NACH super.render() zeichnen, damit es nicht von der
+		//    MC-internen Rendering-Pipeline überschrieben wird
+		int cx         = this.width / 2;
+		int logoWidth  = Math.min(this.width - 16, LOGO_TEXTURE_W);
+		int logoHeight = Math.max(1, logoWidth * LOGO_TEXTURE_H / LOGO_TEXTURE_W);
+		int logoX      = cx - logoWidth / 2;
+		int logoY      = LOGO_PAD_TOP;
+
+		context.drawTexture(RenderPipelines.GUI_TEXTURED, LOGO_TEXTURE, logoX, logoY, logoWidth, logoHeight, 0, 0, LOGO_TEXTURE_W, LOGO_TEXTURE_H, LOGO_TEXTURE_W, LOGO_TEXTURE_H);
 	}
 
 	@Override
