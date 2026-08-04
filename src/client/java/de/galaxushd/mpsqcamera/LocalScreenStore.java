@@ -10,221 +10,130 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+/** Client cache for screens. The API is the persistent source of truth. */
 public final class LocalScreenStore {
-	private static final List<LocalScreenData> SCREENS = new ArrayList<>();
-	private static final List<LocalGroupData> GROUPS = new ArrayList<>();
-	private static final double LOAD_RANGE = 48.0; // blocks
-	private static final String CODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-	private static final int GROUP_CODE_LENGTH = 6;
-	private static final SecureRandom RANDOM = new SecureRandom();
+    private static final List<LocalScreenData> SCREENS = new ArrayList<>();
+    private static final List<LocalGroupData> GROUPS = new ArrayList<>();
+    private static final double LOAD_RANGE = 48.0;
+    private static final String CODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    private static final SecureRandom RANDOM = new SecureRandom();
 
-	private LocalScreenStore() {}
+    private LocalScreenStore() { }
 
-	/** Legt einen Bildschirm mit einer einzelnen Anker-Position an (Legacy-Pfad). */
-	public static void addScreen(BlockPos anchor, Vec3d createdFrom) {
-		SCREENS.add(new LocalScreenData(
-				UUID.randomUUID(),
-				anchor.toImmutable(),
-				anchor.toImmutable(),
-				"Bildschirm",
-				createdFrom,
-				ScreenInputType.LINK,
-				"",
-				null,
-				null
-		));
-	}
+    public static void replaceAll(List<LocalScreenData> screens) {
+        SCREENS.clear();
+        SCREENS.addAll(screens);
+        GROUPS.clear();
+    }
 
-	/** Legt einen Bildschirm aus der Zweipunkt-Auswahl an. */
-	public static void addScreenFromSelection(BlockPos pos1, BlockPos pos2, String name) {
-		SCREENS.add(new LocalScreenData(
-				UUID.randomUUID(),
-				pos1.toImmutable(),
-				pos2.toImmutable(),
-				name.isBlank() ? "Bildschirm" : name,
-				new Vec3d(pos1.getX(), pos1.getY(), pos1.getZ()),
-				ScreenInputType.LINK,
-				"",
-				null,
-				null
-		));
-	}
+    public static LocalScreenData addScreen(BlockPos anchor, Vec3d createdFrom) {
+        return addScreenFromSelection(anchor, anchor, "Bildschirm", ScreenInputType.LINK, "", createdFrom);
+    }
 
-	/** Entfernt einen Bildschirm. Wenn er in einer Gruppe ist, wird die ganze Gruppe gelöscht. */
-	public static void removeScreen(UUID id) {
-		LocalScreenData screen = findById(id).orElse(null);
-		if (screen == null) return;
+    public static LocalScreenData addScreenFromSelection(BlockPos pos1, BlockPos pos2, String name) {
+        return addScreenFromSelection(pos1, pos2, name, ScreenInputType.LINK, "", new Vec3d(pos1.getX(), pos1.getY(), pos1.getZ()));
+    }
 
-		if (screen.groupId() != null) {
-			removeGroup(screen.groupId());
-		} else {
-			SCREENS.removeIf(s -> s.id().equals(id));
-		}
-	}
+    public static LocalScreenData addScreenFromSelection(
+            BlockPos pos1, BlockPos pos2, String name, ScreenInputType inputType, String url, Vec3d createdFrom
+    ) {
+        LocalScreenData screen = new LocalScreenData(
+                UUID.randomUUID(), pos1.toImmutable(), pos2.toImmutable(),
+                name.isBlank() ? "Bildschirm" : name, createdFrom, inputType,
+                url == null ? "" : url, null, null
+        );
+        SCREENS.add(screen);
+        return screen;
+    }
 
-	/** Erstellt eine neue Gruppe mit den angegebenen Bildschirmen und einem gemeinsamen Code. */
-	public static LocalGroupData createGroup(List<UUID> screenIds) {
-		String sharedCode = generateGroupCode();
-		UUID groupId = UUID.randomUUID();
-		LocalGroupData group = new LocalGroupData(groupId, sharedCode);
-		GROUPS.add(group);
+    public static void removeScreen(UUID id) {
+        LocalScreenData screen = findById(id).orElse(null);
+        if (screen == null) return;
+        if (screen.groupId() != null) removeGroup(screen.groupId());
+        else SCREENS.removeIf(item -> item.id().equals(id));
+    }
 
-		for (int i = 0; i < SCREENS.size(); i++) {
-			LocalScreenData s = SCREENS.get(i);
-			if (screenIds.contains(s.id())) {
-				SCREENS.set(i, new LocalScreenData(
-						s.id(), s.pos1(), s.pos2(), s.name(), s.createdFrom(),
-						s.inputType(), s.url(), s.cameraId(), groupId
-				));
-			}
-		}
-		return group;
-	}
+    public static LocalGroupData createGroup(List<UUID> screenIds) {
+        LocalGroupData group = new LocalGroupData(UUID.randomUUID(), generateGroupCode());
+        GROUPS.add(group);
+        for (int i = 0; i < SCREENS.size(); i++) {
+            LocalScreenData screen = SCREENS.get(i);
+            if (screenIds.contains(screen.id())) {
+                SCREENS.set(i, new LocalScreenData(screen.id(), screen.pos1(), screen.pos2(), screen.name(),
+                        screen.createdFrom(), screen.inputType(), screen.url(), screen.cameraId(), group.id()));
+            }
+        }
+        return group;
+    }
 
-	/** Löscht eine Gruppe und alle Bildschirme, die zu ihr gehören. */
-	public static void removeGroup(UUID groupId) {
-		GROUPS.removeIf(g -> g.id().equals(groupId));
-		SCREENS.removeIf(s -> groupId.equals(s.groupId()));
-	}
+    public static void removeGroup(UUID groupId) {
+        GROUPS.removeIf(group -> group.id().equals(groupId));
+        SCREENS.removeIf(screen -> groupId.equals(screen.groupId()));
+    }
 
-	/** Gibt die Gruppe eines Bildschirms zurück (Optional.empty() wenn nicht in Gruppe). */
-	public static Optional<LocalGroupData> getGroupForScreen(UUID screenId) {
-		LocalScreenData screen = findById(screenId).orElse(null);
-		if (screen == null || screen.groupId() == null) return Optional.empty();
-		UUID groupId = screen.groupId();
-		return GROUPS.stream().filter(g -> g.id().equals(groupId)).findFirst();
-	}
+    public static Optional<LocalGroupData> getGroupForScreen(UUID screenId) {
+        LocalScreenData screen = findById(screenId).orElse(null);
+        if (screen == null || screen.groupId() == null) return Optional.empty();
+        return GROUPS.stream().filter(group -> group.id().equals(screen.groupId())).findFirst();
+    }
 
-	/** Gibt alle Gruppen zurück. */
-	public static List<LocalGroupData> getAllGroups() {
-		return List.copyOf(GROUPS);
-	}
+    public static List<LocalGroupData> getAllGroups() { return List.copyOf(GROUPS); }
+    public static List<LocalScreenData> getScreensInGroup(UUID groupId) {
+        return SCREENS.stream().filter(screen -> groupId.equals(screen.groupId())).toList();
+    }
+    public static List<LocalScreenData> getAllScreens() { return List.copyOf(SCREENS); }
+    public static List<LocalScreenData> getInRange(Vec3d playerPos) {
+        return SCREENS.stream().filter(screen -> screen.pos1().getSquaredDistance(playerPos.x, playerPos.y, playerPos.z) <= LOAD_RANGE * LOAD_RANGE).toList();
+    }
+    public static Optional<LocalScreenData> findByAnchor(BlockPos anchor) {
+        return SCREENS.stream().filter(screen -> screen.pos1().equals(anchor)).findFirst();
+    }
+    public static Optional<LocalScreenData> findById(UUID id) {
+        return SCREENS.stream().filter(screen -> screen.id().equals(id)).findFirst();
+    }
+    public static Optional<LocalScreenData> findNearest(Vec3d pos, double maxDistance) {
+        LocalScreenData result = null;
+        double best = maxDistance * maxDistance;
+        for (LocalScreenData screen : SCREENS) {
+            double distance = screen.pos1().getSquaredDistance(pos.x, pos.y, pos.z);
+            if (distance <= best) { best = distance; result = screen; }
+        }
+        return Optional.ofNullable(result);
+    }
 
-	/** Gibt alle Bildschirme einer Gruppe zurück. */
-	public static List<LocalScreenData> getScreensInGroup(UUID groupId) {
-		List<LocalScreenData> result = new ArrayList<>();
-		for (LocalScreenData s : SCREENS) {
-			if (groupId.equals(s.groupId())) result.add(s);
-		}
-		return result;
-	}
+    public static void updateConfig(UUID id, ScreenInputType mode, String url, UUID cameraId) {
+        for (int i = 0; i < SCREENS.size(); i++) {
+            LocalScreenData screen = SCREENS.get(i);
+            if (screen.id().equals(id)) {
+                SCREENS.set(i, new LocalScreenData(screen.id(), screen.pos1(), screen.pos2(), screen.name(),
+                        screen.createdFrom(), mode, url == null ? "" : url, cameraId, screen.groupId()));
+                return;
+            }
+        }
+    }
 
-	public static List<LocalScreenData> getInRange(Vec3d playerPos) {
-		List<LocalScreenData> result = new ArrayList<>();
-		for (LocalScreenData s : SCREENS) {
-			if (s.pos1().getSquaredDistance(playerPos.x, playerPos.y, playerPos.z)
-					<= LOAD_RANGE * LOAD_RANGE) {
-				result.add(s);
-			}
-		}
-		return result;
-	}
+    private static String generateGroupCode() {
+        StringBuilder code = new StringBuilder(6);
+        for (int i = 0; i < 6; i++) code.append(CODE_CHARS.charAt(RANDOM.nextInt(CODE_CHARS.length())));
+        return code.toString();
+    }
 
-	public static List<LocalScreenData> getAllScreens() {
-		return List.copyOf(SCREENS);
-	}
+    public enum ScreenInputType {
+        LINK("Link"), CAMERA("Kamera");
+        private final String label;
+        ScreenInputType(String label) { this.label = label; }
+        public Text text() { return Text.literal(label); }
+    }
 
-	public static Optional<LocalScreenData> findByAnchor(BlockPos anchor) {
-		for (LocalScreenData s : SCREENS) {
-			if (s.pos1().equals(anchor)) return Optional.of(s);
-		}
-		return Optional.empty();
-	}
+    public enum DeleteBehavior {
+        NIE("Nie"), CREATOR_OFFLINE("Wenn Creator off"), NICHT_GELADEN("Wenn nicht geladen");
+        private final String label;
+        DeleteBehavior(String label) { this.label = label; }
+        public String getLabel() { return label; }
+        public DeleteBehavior next() { return values()[(ordinal() + 1) % values().length]; }
+    }
 
-	public static Optional<LocalScreenData> findById(UUID id) {
-		for (LocalScreenData s : SCREENS) {
-			if (s.id().equals(id)) return Optional.of(s);
-		}
-		return Optional.empty();
-	}
-
-	public static Optional<LocalScreenData> findNearest(Vec3d pos, double maxDistance) {
-		double best = maxDistance * maxDistance;
-		LocalScreenData found = null;
-		for (LocalScreenData s : SCREENS) {
-			double d = s.pos1().getSquaredDistance(pos.x, pos.y, pos.z);
-			if (d <= best) {
-				best = d;
-				found = s;
-			}
-		}
-		return Optional.ofNullable(found);
-	}
-
-	public static void updateConfig(UUID id, ScreenInputType mode, String url, UUID cameraId) {
-		for (int i = 0; i < SCREENS.size(); i++) {
-			LocalScreenData s = SCREENS.get(i);
-			if (s.id().equals(id)) {
-				SCREENS.set(i, new LocalScreenData(
-						s.id(),
-						s.pos1(),
-						s.pos2(),
-						s.name(),
-						s.createdFrom(),
-						mode,
-						url == null ? "" : url,
-						cameraId,
-						s.groupId()
-				));
-				return;
-			}
-		}
-	}
-
-	private static String generateGroupCode() {
-		StringBuilder sb = new StringBuilder(GROUP_CODE_LENGTH);
-		for (int i = 0; i < GROUP_CODE_LENGTH; i++) {
-			sb.append(CODE_CHARS.charAt(RANDOM.nextInt(CODE_CHARS.length())));
-		}
-		return sb.toString();
-	}
-
-	// ── Enums ────────────────────────────────────────────────────────────────
-
-	public enum ScreenInputType {
-		LINK("Link"),
-		CAMERA("Kamera");
-
-		private final String label;
-
-		ScreenInputType(String label) { this.label = label; }
-
-		public Text text() { return Text.literal(label); }
-	}
-
-	public enum DeleteBehavior {
-		NIE("Nie"),
-		CREATOR_OFFLINE("Wenn Creator off"),
-		NICHT_GELADEN("Wenn nicht geladen");
-
-		private final String label;
-
-		DeleteBehavior(String label) { this.label = label; }
-
-		public String getLabel() { return label; }
-
-		public DeleteBehavior next() {
-			DeleteBehavior[] values = values();
-			return values[(this.ordinal() + 1) % values.length];
-		}
-	}
-
-	// ── Records ───────────────────────────────────────────────────────────────
-
-	public record LocalScreenData(
-			UUID id,
-			BlockPos pos1,
-			BlockPos pos2,
-			String name,
-			Vec3d createdFrom,
-			ScreenInputType inputType,
-			String url,
-			UUID cameraId,
-			UUID groupId
-	) {}
-
-	public record LocalGroupData(
-			UUID id,
-			String sharedCode
-	) {}
+    public record LocalScreenData(UUID id, BlockPos pos1, BlockPos pos2, String name, Vec3d createdFrom,
+                                  ScreenInputType inputType, String url, UUID cameraId, UUID groupId) { }
+    public record LocalGroupData(UUID id, String sharedCode) { }
 }

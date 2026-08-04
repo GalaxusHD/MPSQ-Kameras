@@ -1,5 +1,6 @@
 package de.galaxushd.mpsqcamera;
 
+import com.google.gson.JsonObject;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -7,195 +8,125 @@ import net.minecraft.client.gui.widget.CyclingButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
 
-/**
- * Öffnet sich automatisch nachdem zwei Positionen mit Rechtsklick und dem
- * Werkzeug markiert wurden.
- * Deutsches Gegenstück zum "Create WatchParty Screen"-Menü.
- *
- * Layout:
- *  ┌──────────────────────────────────┐
- *  │  Bildschirm erstellen            │
- *  │  3 × 2 × 1 Blöcke               │
- *  │  ────────────────────────────    │
- *  │  Name: [__________________]      │
- *  │  Ausrichtung: [Nord ▶]           │
- *  │  Modus: [Link ▶]                 │
- *  │  URL: [https://…_____________]   │
- *  │  ─────────────────────────────   │
- *  │  [  Erstellen  ] [  Abbrechen ]  │
- *  └──────────────────────────────────┘
- */
 public class BildschirmErstellenScreen extends Screen {
-
     private final BlockPos pos1;
     private final BlockPos pos2;
-
+    private final int breite;
+    private final int hoehe;
+    private final int tiefe;
     private TextFieldWidget nameField;
-    private CyclingButtonWidget<Ausrichtung> ausrichtungButton;
     private CyclingButtonWidget<LocalScreenStore.ScreenInputType> modusButton;
     private TextFieldWidget urlField;
     private ButtonWidget kameraButton;
 
-    // Automatisch berechnete Größe aus den zwei Positionen
-    private final int breite;
-    private final int hoehe;
-    private final int tiefe;
-
     public BildschirmErstellenScreen(BlockPos pos1, BlockPos pos2) {
         super(Text.translatable("gui.mpsqcamera.erstellen.titel"));
-        this.pos1   = pos1;
-        this.pos2   = pos2;
-        this.breite = Math.abs(pos2.getX() - pos1.getX()) + 1;
-        this.hoehe  = Math.abs(pos2.getY() - pos1.getY()) + 1;
-        this.tiefe  = Math.abs(pos2.getZ() - pos1.getZ()) + 1;
+        this.pos1 = pos1;
+        this.pos2 = pos2;
+        breite = Math.abs(pos2.getX() - pos1.getX()) + 1;
+        hoehe = Math.abs(pos2.getY() - pos1.getY()) + 1;
+        tiefe = Math.abs(pos2.getZ() - pos1.getZ()) + 1;
     }
 
     @Override
     protected void init() {
-        int cx = this.width / 2;
-        int w  = 220;
-        int y  = this.height / 2 - 72;
-
-        // ── Name ──────────────────────────────────────────────────────────────
-        nameField = new TextFieldWidget(
-                this.textRenderer,
-                cx - w / 2, y, w, 20,
-                Text.translatable("gui.mpsqcamera.erstellen.name")
-        );
+        int centerX = width / 2;
+        int fieldWidth = 220;
+        int y = height / 2 - 72;
+        nameField = new TextFieldWidget(textRenderer, centerX - fieldWidth / 2, y, fieldWidth, 20, Text.translatable("gui.mpsqcamera.erstellen.name"));
         nameField.setPlaceholder(Text.translatable("gui.mpsqcamera.erstellen.name.hinweis"));
         nameField.setMaxLength(64);
         addDrawableChild(nameField);
         y += 28;
-
-        // ── Ausrichtung ───────────────────────────────────────────────────────
-        ausrichtungButton = CyclingButtonWidget.builder(Ausrichtung::getLabel)
-                .values(Ausrichtung.values())
-                .initially(Ausrichtung.NORD)
-                .build(cx - w / 2, y, w, 20,
-                        Text.translatable("gui.mpsqcamera.erstellen.ausrichtung"));
-        addDrawableChild(ausrichtungButton);
+        addDrawableChild(CyclingButtonWidget.builder(Ausrichtung::getLabel).values(Ausrichtung.values()).initially(Ausrichtung.NORD)
+                .build(centerX - fieldWidth / 2, y, fieldWidth, 20, Text.translatable("gui.mpsqcamera.erstellen.ausrichtung")));
         y += 28;
-
-        // ── Eingabemodus ──────────────────────────────────────────────────────
-        modusButton = CyclingButtonWidget.builder(LocalScreenStore.ScreenInputType::text)
-                .values(LocalScreenStore.ScreenInputType.values())
-                .initially(LocalScreenStore.ScreenInputType.LINK)
-                .build(cx - w / 2, y, w, 20,
-                        Text.translatable("gui.mpsqcamera.erstellen.modus"),
-                        (btn, val) -> aktualisiereSichtbarkeit(val));
-        addDrawableChild(modusButton);
+        modusButton = addDrawableChild(CyclingButtonWidget.builder(LocalScreenStore.ScreenInputType::text).values(LocalScreenStore.ScreenInputType.values())
+                .initially(LocalScreenStore.ScreenInputType.LINK).build(centerX - fieldWidth / 2, y, fieldWidth, 20,
+                        Text.translatable("gui.mpsqcamera.erstellen.modus"), (button, mode) -> updateMode(mode)));
         y += 28;
-
-        // ── URL-Feld (Link-Modus) ─────────────────────────────────────────────
-        urlField = new TextFieldWidget(
-                this.textRenderer,
-                cx - w / 2, y, w, 20,
-                Text.translatable("gui.mpsqcamera.erstellen.url")
-        );
+        urlField = new TextFieldWidget(textRenderer, centerX - fieldWidth / 2, y, fieldWidth, 20, Text.translatable("gui.mpsqcamera.erstellen.url"));
         urlField.setPlaceholder(Text.literal("https://…"));
         urlField.setMaxLength(2048);
         addDrawableChild(urlField);
         y += 28;
-
-        // ── Kamera-Auswahl (Kamera-Modus) – Stub ─────────────────────────────
-        kameraButton = ButtonWidget.builder(
-                Text.literal("Kamera: Keine"),
-                b -> { /* TODO: Kamera-Auswahl implementieren */ }
-        ).dimensions(cx - w / 2, y, w, 20).build();
-        addDrawableChild(kameraButton);
+        kameraButton = addDrawableChild(ButtonWidget.builder(Text.literal("Kamera: Keine"), button -> { })
+                .dimensions(centerX - fieldWidth / 2, y, fieldWidth, 20).build());
         y += 32;
-
-        // ── Erstellen / Abbrechen ─────────────────────────────────────────────
-        addDrawableChild(ButtonWidget.builder(
-                Text.translatable("gui.mpsqcamera.erstellen.erstellen"),
-                b -> onErstellen()
-        ).dimensions(cx - w / 2, y, 106, 20).build());
-
-        addDrawableChild(ButtonWidget.builder(
-                Text.translatable("gui.mpsqcamera.erstellen.abbrechen"),
-                b -> close()
-        ).dimensions(cx + 4, y, 106, 20).build());
-
-        aktualisiereSichtbarkeit(LocalScreenStore.ScreenInputType.LINK);
+        addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.erstellen.erstellen"), button -> createScreen())
+                .dimensions(centerX - fieldWidth / 2, y, 106, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.erstellen.abbrechen"), button -> close())
+                .dimensions(centerX + 4, y, 106, 20).build());
+        updateMode(LocalScreenStore.ScreenInputType.LINK);
     }
 
-    // ── Hilfsmethoden ────────────────────────────────────────────────────────
-
-    private void aktualisiereSichtbarkeit(LocalScreenStore.ScreenInputType modus) {
-        boolean istLink = modus == LocalScreenStore.ScreenInputType.LINK;
-        urlField.setVisible(istLink);
-        urlField.setEditable(istLink);
-        kameraButton.visible = !istLink;
-        kameraButton.active  = !istLink;
+    private void updateMode(LocalScreenStore.ScreenInputType mode) {
+        boolean linkMode = mode == LocalScreenStore.ScreenInputType.LINK;
+        urlField.setVisible(linkMode);
+        urlField.setEditable(linkMode);
+        kameraButton.visible = !linkMode;
+        kameraButton.active = !linkMode;
     }
 
-    private void onErstellen() {
+    private void createScreen() {
+        if (client == null || client.player == null || client.world == null) return;
         String name = nameField.getText().trim();
-        if (name.isEmpty()) name = "Bildschirm";
-        LocalScreenStore.addScreenFromSelection(pos1, pos2, name);
-        MpsqCameraClient.LOGGER.info(
-                "[MPSQ Kameras] Bildschirm '{}' erstellt: {} → {}", name, pos1, pos2);
+        if (name.isBlank()) name = "Bildschirm";
+        LocalScreenStore.ScreenInputType mode = modusButton.getValue();
+        String url = mode == LocalScreenStore.ScreenInputType.LINK ? urlField.getText().trim() : "";
+        Vec3d createdFrom = client.player.getPos();
+        LocalScreenStore.addScreenFromSelection(pos1, pos2, name, mode, url, createdFrom);
+
+        JsonObject body = new JsonObject();
+        body.addProperty("name", name);
+        body.addProperty("mode", mode == LocalScreenStore.ScreenInputType.CAMERA ? "CAMERA" : "KINO");
+        body.addProperty("dimension", client.world.getRegistryKey().getValue().toString());
+        body.add("pos1", position(pos1));
+        body.add("pos2", position(pos2));
+        body.addProperty("cinemaUrl", url);
+        MpsqApiClient.post("/screens", body).thenCompose(result -> MpsqApiClient.loadScreens()).thenAccept(screens ->
+                client.execute(() -> LocalScreenStore.replaceAll(screens))
+        ).exceptionally(error -> {
+            MpsqCameraClient.LOGGER.warn("Bildschirm konnte nicht synchronisiert werden", error);
+            return null;
+        });
         close();
     }
 
-    // ── Rendering ────────────────────────────────────────────────────────────
+    private static JsonObject position(BlockPos pos) {
+        JsonObject result = new JsonObject();
+        result.addProperty("x", pos.getX());
+        result.addProperty("y", pos.getY());
+        result.addProperty("z", pos.getZ());
+        return result;
+    }
 
     @Override
     public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
         super.renderBackground(context, mouseX, mouseY, delta);
-        MpsqTheme.drawBackground(context, this.width, this.height);
-
-        // Zentriertes Panel
-        int panelW = 260;
-        int panelH = 290;
-        MpsqTheme.drawPanel(context,
-                (this.width - panelW) / 2,
-                this.height / 2 - 100,
-                panelW, panelH);
+        MpsqTheme.drawBackground(context, width, height);
+        MpsqTheme.drawPanel(context, (width - 260) / 2, height / 2 - 100, 260, 290);
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
-
-        int cx    = this.width / 2;
-        int titleY = this.height / 2 - 96;
-
-        // Titel
-        context.drawCenteredTextWithShadow(
-                this.textRenderer, this.title, cx, titleY, MpsqTheme.TEXT_TITEL);
-
-        // Größen-Info
-        String groesse = breite + " × " + hoehe + " × " + tiefe + " Blöcke";
-        context.drawCenteredTextWithShadow(
-                this.textRenderer, Text.literal(groesse),
-                cx, titleY + 12, MpsqTheme.TEXT_GEDAEMPT);
-
-        // Trennlinie
-        context.fill(cx - 120, titleY + 25, cx + 120, titleY + 26, 0x44FFFFFF);
-
-        // Feld-Beschriftung "Name"
-        context.drawTextWithShadow(
-                this.textRenderer,
-                Text.translatable("gui.mpsqcamera.erstellen.name"),
-                cx - 110, this.height / 2 - 84,
-                MpsqTheme.TEXT_NORMAL);
+        int centerX = width / 2;
+        int titleY = height / 2 - 96;
+        context.drawCenteredTextWithShadow(textRenderer, title, centerX, titleY, MpsqTheme.TEXT_TITEL);
+        context.drawCenteredTextWithShadow(textRenderer, Text.literal(breite + " × " + hoehe + " × " + tiefe + " Blöcke"), centerX, titleY + 12, MpsqTheme.TEXT_GEDAEMPT);
+        context.fill(centerX - 120, titleY + 25, centerX + 120, titleY + 26, 0x44FFFFFF);
+        context.drawTextWithShadow(textRenderer, Text.translatable("gui.mpsqcamera.erstellen.name"), centerX - 110, height / 2 - 84, MpsqTheme.TEXT_NORMAL);
     }
 
-    @Override
-    public boolean shouldPause() { return false; }
-
-    // ── Ausrichtung-Enum ─────────────────────────────────────────────────────
+    @Override public boolean shouldPause() { return false; }
 
     public enum Ausrichtung {
-        NORD("Nord"), SUED("Süd"), OST("Ost"), WEST("West"),
-        OBEN("Oben"), UNTEN("Unten");
-
+        NORD("Nord"), SUED("Süd"), OST("Ost"), WEST("West"), OBEN("Oben"), UNTEN("Unten");
         private final String label;
-
         Ausrichtung(String label) { this.label = label; }
-
         public Text getLabel() { return Text.literal(label); }
     }
 }
