@@ -94,4 +94,3 @@ public final class MpsqApiClient {
         catch (IOException exception) { MpsqCameraClient.LOGGER.warn("MPSQ-Zugang konnte nicht gelesen werden", exception); return null; }
     }
 }
-
