@@ -1,7 +1,11 @@
 package de.galaxushd.mpsqcamera;
 
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.ProfileComponent;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.decoration.ArmorStandEntity;
 import net.minecraft.item.ItemStack;
@@ -13,6 +17,7 @@ import java.util.UUID;
 
 /** Client-only entities. They are never sent to a Minecraft server. */
 public final class CameraHologramManager {
+    private static final String CAMERA_HEAD_TEXTURE = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOGZiZWQzNzI1YzA1Mjc0OGI2NWJlODQ3ZTE5NDJmNzU5YzNhOGRhMDY0OWY4MDUwODdiMDM2Nzk2NDE2MWI0ZCJ9fX0=";
     private static final Map<UUID, ArmorStandEntity> HOLOGRAMS = new HashMap<>();
     private static int nextEntityId = -2_000_000_000;
 
@@ -30,7 +35,7 @@ public final class CameraHologramManager {
         stand.setInvisible(true);
         stand.setNoGravity(true);
         stand.setYaw(camera.yaw());
-        stand.equipStack(EquipmentSlot.HEAD, new ItemStack(Items.PLAYER_HEAD));
+        stand.equipStack(EquipmentSlot.HEAD, createCameraHead());
         client.world.addEntity(stand);
         HOLOGRAMS.put(camera.id(), stand);
     }
@@ -43,5 +48,13 @@ public final class CameraHologramManager {
     public static void clear() {
         for (ArmorStandEntity stand : HOLOGRAMS.values()) stand.discard();
         HOLOGRAMS.clear();
+    }
+
+    private static ItemStack createCameraHead() {
+        ItemStack head = new ItemStack(Items.PLAYER_HEAD);
+        GameProfile profile = new GameProfile(UUID.randomUUID(), "MPSQ Camera");
+        profile.getProperties().put("textures", new Property("textures", CAMERA_HEAD_TEXTURE));
+        head.set(DataComponentTypes.PROFILE, new ProfileComponent(profile));
+        return head;
     }
 }
