@@ -1,6 +1,7 @@
 package de.galaxushd.mpsqcamera;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.minecraft.client.MinecraftClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,9 +18,11 @@ public class MpsqCameraClient implements ClientModInitializer {
         CameraHologramManager.initialize();
         SelectionRenderer.initialize();
         ScreenRenderer.initialize();
-        MpsqApiClient.initialize().exceptionally(error -> {
-            LOGGER.warn("MPSQ-API ist momentan nicht erreichbar", error);
-            return null;
-        });
+        MpsqApiClient.initialize().thenCompose(ignored -> MpsqApiClient.loadCameras()).thenAccept(cameras ->
+                MinecraftClient.getInstance().execute(() -> {
+                    LocalCameraStore.replaceAll(cameras);
+                    cameras.forEach(CameraHologramManager::show);
+                })
+        ).exceptionally(error -> { LOGGER.warn("MPSQ-API ist momentan nicht erreichbar", error); return null; });
     }
 }
