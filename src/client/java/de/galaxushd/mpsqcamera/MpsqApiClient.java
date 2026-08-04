@@ -2,6 +2,7 @@ package de.galaxushd.mpsqcamera;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
@@ -16,6 +17,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import net.minecraft.util.math.Vec3d;
 
 /** The client only keeps its own random token. No Supabase secret is ever stored here. */
 public final class MpsqApiClient {
@@ -48,6 +53,23 @@ public final class MpsqApiClient {
     public static CompletableFuture<JsonElement> patch(String path, JsonObject body) { return request("PATCH", path, body, true); }
     public static CompletableFuture<JsonElement> delete(String path) { return request("DELETE", path, null, true); }
 
+    public static CompletableFuture<List<LocalCameraStore.CameraData>> loadCameras() {
+        return get("/cameras").thenApply(json -> {
+            JsonArray rows = json.getAsJsonArray();
+            List<LocalCameraStore.CameraData> cameras = new ArrayList<>();
+            for (JsonElement element : rows) {
+                JsonObject row = element.getAsJsonObject();
+                LocalCameraStore.CameraKind kind = "BODYCAM".equals(row.get("kind").getAsString())
+                        ? LocalCameraStore.CameraKind.BODYCAM : LocalCameraStore.CameraKind.STATIC;
+                Vec3d position = row.get("x").isJsonNull() ? null : new Vec3d(row.get("x").getAsDouble(), row.get("y").getAsDouble(), row.get("z").getAsDouble());
+                UUID wearer = row.has("body_owner_id") && !row.get("body_owner_id").isJsonNull() ? UUID.fromString(row.get("body_owner_id").getAsString()) : null;
+                cameras.add(new LocalCameraStore.CameraData(UUID.fromString(row.get("id").getAsString()), row.get("name").getAsString(), kind,
+                        row.get("dimension").getAsString(), position, row.get("yaw").getAsFloat(), row.get("pitch").getAsFloat(), wearer));
+            }
+            return cameras;
+        });
+    }
+
     private static CompletableFuture<JsonElement> request(String method, String path, JsonObject body, boolean authenticated) {
         HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(API_URL + path))
                 .timeout(Duration.ofSeconds(15)).header("Accept", "application/json");
@@ -72,3 +94,4 @@ public final class MpsqApiClient {
         catch (IOException exception) { MpsqCameraClient.LOGGER.warn("MPSQ-Zugang konnte nicht gelesen werden", exception); return null; }
     }
 }
+
