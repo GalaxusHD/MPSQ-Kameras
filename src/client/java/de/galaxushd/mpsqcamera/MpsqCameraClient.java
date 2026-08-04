@@ -5,14 +5,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class MpsqCameraClient implements ClientModInitializer {
-	public static final String MOD_ID = "mpsqcamera";
-	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    public static final String MOD_ID = "mpsqcamera";
+    public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-	@Override
-	public void onInitializeClient() {
-		LOGGER.info("[MPSQ Kameras] Client mod initialized.");
-		ScreenCreationManager.initialize();
-		SelectionRenderer.initialize();
-		ScreenRenderer.initialize();
-	}
+    @Override
+    public void onInitializeClient() {
+        LOGGER.info("[MPSQ Kameras] Client mod initialized.");
+        ScreenCreationManager.initialize();
+        CameraCreationManager.initialize();
+        SelectionRenderer.initialize();
+        ScreenRenderer.initialize();
+        MpsqApiClient.initialize().exceptionally(error -> {
+            LOGGER.warn("MPSQ-API ist momentan nicht erreichbar", error);
+            return null;
+        });
+    }
 }
