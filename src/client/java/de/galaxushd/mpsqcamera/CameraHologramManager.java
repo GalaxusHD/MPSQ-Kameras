@@ -29,7 +29,6 @@ public final class CameraHologramManager {
         stand.setId(nextEntityId++);
         stand.setInvisible(true);
         stand.setNoGravity(true);
-        stand.setSmall(true);
         stand.setYaw(camera.yaw());
         stand.equipStack(EquipmentSlot.HEAD, new ItemStack(Items.PLAYER_HEAD));
         client.world.addEntity(stand);
