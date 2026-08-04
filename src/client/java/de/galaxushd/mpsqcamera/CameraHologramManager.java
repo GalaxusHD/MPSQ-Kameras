@@ -3,6 +3,7 @@ package de.galaxushd.mpsqcamera;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.ProfileComponent;
@@ -25,6 +26,9 @@ public final class CameraHologramManager {
 
     public static void initialize() {
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> clear());
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
+                client.execute(() -> LocalCameraStore.getAll().forEach(CameraHologramManager::show)));
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> clear());
     }
 
     public static void show(LocalCameraStore.CameraData camera) {
@@ -58,3 +62,4 @@ public final class CameraHologramManager {
         return head;
     }
 }
+
