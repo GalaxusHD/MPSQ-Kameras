@@ -33,7 +33,7 @@ public final class MpsqApiClient {
         JsonObject body = new JsonObject();
         body.addProperty("displayName", "Minecraft Client");
         return request("POST", "/register", body, false).thenAccept(json -> {
-            token = json.get("token").getAsString();
+            token = json.getAsJsonObject().get("token").getAsString();
             try {
                 Files.createDirectories(TOKEN_FILE.getParent());
                 Files.writeString(TOKEN_FILE, token, StandardCharsets.UTF_8);
