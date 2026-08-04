@@ -29,6 +29,7 @@ public final class CameraCreationManager {
             Vec3d position = client.player.getCameraPosVec(1.0F).add(client.player.getRotationVec(1.0F).multiply(0.65));
             String name = "Kamera " + (LocalCameraStore.getAll().size() + 1);
             LocalCameraStore.CameraData local = LocalCameraStore.createStatic(name, client.world.getRegistryKey().getValue().toString(), position, client.player.getYaw(), client.player.getPitch());
+            CameraHologramManager.show(local);
             publish(local);
             client.player.sendMessage(Text.translatable("status.mpsqcamera.camera_created"), true);
         }
@@ -42,3 +43,4 @@ public final class CameraCreationManager {
         MpsqApiClient.post("/cameras", body).exceptionally(error -> { MpsqCameraClient.LOGGER.warn("Kamera konnte nicht synchronisiert werden", error); return null; });
     }
 }
+
