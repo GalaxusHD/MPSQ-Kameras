@@ -47,4 +47,13 @@
   "status.mpsqcamera.view_enter": "Camera view active (ESC to exit)",
   "status.mpsqcamera.view_exit": "Camera view ended",
   "status.mpsqcamera.camera_offline": "Camera is currently not loaded"
+  
+  "key.mpsqcamera.create_camera": "Create camera",
+  "gui.mpsqcamera.cameras.title": "Cameras",
+  "gui.mpsqcamera.cameras.empty": "No cameras created yet.",
+  "gui.mpsqcamera.cameras.static": "Static camera",
+  "gui.mpsqcamera.cameras.bodycam": "Bodycam",
+  "gui.mpsqcamera.cameras.entry": "%s - %s",
+  "gui.mpsqcamera.back": "Back",
+  "status.mpsqcamera.camera_created": "Camera created"
 }
