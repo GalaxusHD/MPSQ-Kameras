@@ -11,7 +11,7 @@ import net.minecraft.util.Identifier;
 public class ModConfigScreen extends Screen {
 	private static final Identifier LOGO_TEXTURE =
 			Identifier.of(MpsqCameraClient.MOD_ID, "textures/gui/mpsqlogo.png");
-	private static final int LOGO_TEXTURE_SIZE = 864;
+	private static final int LOGO_TEXTURE_SIZE = 860;
 	private static final int LOGO_MAX_SIZE = 192;
 	private static final int LOGO_TOP_MARGIN = 8;
 	private static final int LOGO_BOTTOM_MARGIN = 12;
