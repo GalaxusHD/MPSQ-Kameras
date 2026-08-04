@@ -1,14 +1,50 @@
-diff --git a/src/main/resources/assets/mpsqcamera/lang/en_us.json b/src/main/resources/assets/mpsqcamera/lang/en_us.json
---- a/src/main/resources/assets/mpsqcamera/lang/en_us.json
-+++ b/src/main/resources/assets/mpsqcamera/lang/en_us.json
-@@ -4,6 +4,12 @@
-   "key.mpsqcamera.hauptmenu": "Open Main Menu",
- 
-   "gui.mpsqcamera.hauptmenu.titel": "MPSQ Kameras",
-+  "gui.mpsqcamera.main.title": "MPSQ Cameras",
-+  "gui.mpsqcamera.main.activation.placeholder": "Enter activation code",
-+  "gui.mpsqcamera.main.join": "Join",
-+  "gui.mpsqcamera.main.screens": "Screens",
-+  "gui.mpsqcamera.main.cameras": "Cameras",
-+  "gui.mpsqcamera.main.settings": "Settings",
-   "gui.mpsqcamera.hauptmenu.logo_platzhalter": "[ Logo ]",
+{
+  "category.mpsqcamera.main": "MPSQ Cameras",
+  "key.mpsqcamera.hauptmenu": "Open Main Menu",
+
+  "gui.mpsqcamera.hauptmenu.titel": "MPSQ Cameras",
+  "gui.mpsqcamera.hauptmenu.logo_platzhalter": "[ Logo ]",
+  "gui.mpsqcamera.hauptmenu.zugangscode": "Access Code",
+  "gui.mpsqcamera.hauptmenu.zugangscode.hinweis": "Enter code here…",
+  "gui.mpsqcamera.hauptmenu.bildschirme": "Screens",
+  "gui.mpsqcamera.hauptmenu.bildschirm_erstellen": "Create Screen",
+  "gui.mpsqcamera.hauptmenu.einstellungen": "Settings",
+  "gui.mpsqcamera.hauptmenu.lizenz": "License",
+
+  "gui.mpsqcamera.main.title": "MPSQ Cameras",
+  "gui.mpsqcamera.main.activation.placeholder": "Enter activation code",
+  "gui.mpsqcamera.main.join": "Join",
+  "gui.mpsqcamera.main.screens": "Screens",
+  "gui.mpsqcamera.main.cameras": "Cameras",
+  "gui.mpsqcamera.main.settings": "Settings",
+
+  "gui.mpsqcamera.lizenz.titel": "License",
+  "gui.mpsqcamera.lizenz.zurueck": "← Back",
+
+  "gui.mpsqcamera.einstellungen.titel": "Settings",
+  "gui.mpsqcamera.einstellungen.item_label": "Tool Item (Item ID):",
+  "gui.mpsqcamera.einstellungen.item": "Item ID",
+  "gui.mpsqcamera.einstellungen.item_reset": "Reset",
+  "gui.mpsqcamera.einstellungen.tasten_label": "Key Bindings:",
+  "gui.mpsqcamera.einstellungen.tasten": "Open Controls",
+  "gui.mpsqcamera.einstellungen.lautstaerke_label": "Volume:",
+  "gui.mpsqcamera.einstellungen.schliessen": "Apply & Close",
+
+  "gui.mpsqcamera.erstellen.titel": "Create Screen",
+  "gui.mpsqcamera.erstellen.name": "Name",
+  "gui.mpsqcamera.erstellen.name.hinweis": "Enter a name…",
+  "gui.mpsqcamera.erstellen.ausrichtung": "Orientation",
+  "gui.mpsqcamera.erstellen.modus": "Input Mode",
+  "gui.mpsqcamera.erstellen.url": "URL",
+  "gui.mpsqcamera.erstellen.erstellen": "Create",
+  "gui.mpsqcamera.erstellen.abbrechen": "Cancel",
+
+  "gui.mpsqcamera.auswahl.pos1_gesetzt": "✔ Position 1 selected – now click position 2",
+  "gui.mpsqcamera.auswahl.abgebrochen": "✘ Selection cancelled",
+  "gui.mpsqcamera.auswahl.kein_block": "✘ No block targeted",
+  "gui.mpsqcamera.auswahl.luft": "✘ Target block is air",
+
+  "status.mpsqcamera.view_enter": "Camera view active (ESC to exit)",
+  "status.mpsqcamera.view_exit": "Camera view ended",
+  "status.mpsqcamera.camera_offline": "Camera is currently not loaded"
+}
