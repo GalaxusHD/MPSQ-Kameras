@@ -70,7 +70,8 @@ public class ModConfigScreen extends Screen {
         updateActivationCodeState(); super.render(context, mouseX, mouseY, delta);
         int availableLogoHeight = height / 2 - LOGO_TOP_MARGIN - LOGO_BOTTOM_MARGIN;
         int logoSize = Math.max(1, Math.min(LOGO_MAX_SIZE, Math.min(width - HORIZONTAL_MARGIN * 2, availableLogoHeight)));
-        context.drawTexture(RenderPipelines.GUI_TEXTURED, LOGO_TEXTURE, (width - logoSize) / 2, LOGO_TOP_MARGIN, 0, 0, logoSize, logoSize, LOGO_TEXTURE_SIZE, LOGO_TEXTURE_SIZE);
+        context.drawTexture(RenderPipelines.GUI_TEXTURED, LOGO_TEXTURE, (width - logoSize) / 2, LOGO_TOP_MARGIN, 0, 0, logoSize, logoSize,
+                LOGO_TEXTURE_SIZE, LOGO_TEXTURE_SIZE, LOGO_TEXTURE_SIZE, LOGO_TEXTURE_SIZE);
     }
     @Override public boolean shouldPause() { return false; }
 }
