@@ -28,17 +28,24 @@ public final class ScreenRenderer {
             if (a.getSquaredDistance(camera.x, camera.y, camera.z) > RENDER_RANGE * RENDER_RANGE) continue;
             double x1=Math.min(a.getX(),b.getX()), y1=Math.min(a.getY(),b.getY()), z1=Math.min(a.getZ(),b.getZ());
             double x2=Math.max(a.getX(),b.getX())+1, y2=Math.max(a.getY(),b.getY())+1, z2=Math.max(a.getZ(),b.getZ())+1;
-            drawSurface(matrices, quads, x1,y1,z1,x2,y2,z2);
+            drawSurface(matrices, quads, camera, x1,y1,z1,x2,y2,z2);
             VertexRendering.drawBox(matrices, lines, x1,y1,z1,x2,y2,z2, 1f,.9f,0f,.8f);
         }
         matrices.pop();
     }
 
-    private static void drawSurface(MatrixStack matrices, VertexConsumer vc, double x1,double y1,double z1,double x2,double y2,double z2) {
+    private static void drawSurface(MatrixStack matrices, VertexConsumer vc, Vec3d camera, double x1,double y1,double z1,double x2,double y2,double z2) {
         double dx=x2-x1, dy=y2-y1, dz=z2-z1; double e=.003;
-        if (dz <= dx && dz <= dy) quad(matrices,vc,x1,y1,(z1+z2)/2-e, x2,y1,(z1+z2)/2-e, x2,y2,(z1+z2)/2-e, x1,y2,(z1+z2)/2-e);
-        else if (dx <= dy && dx <= dz) quad(matrices,vc,(x1+x2)/2-e,y1,z1, (x1+x2)/2-e,y1,z2, (x1+x2)/2-e,y2,z2, (x1+x2)/2-e,y2,z1);
-        else quad(matrices,vc,x1,(y1+y2)/2-e,z1, x2,(y1+y2)/2-e,z1, x2,(y1+y2)/2-e,z2, x1,(y1+y2)/2-e,z2);
+        if (dz <= dx && dz <= dy) {
+            double z = Math.abs(camera.z-z1) < Math.abs(camera.z-z2) ? z1-e : z2+e;
+            quad(matrices,vc,x1,y1,z, x2,y1,z, x2,y2,z, x1,y2,z);
+        } else if (dx <= dy && dx <= dz) {
+            double x = Math.abs(camera.x-x1) < Math.abs(camera.x-x2) ? x1-e : x2+e;
+            quad(matrices,vc,x,y1,z1, x,y1,z2, x,y2,z2, x,y2,z1);
+        } else {
+            double y = Math.abs(camera.y-y1) < Math.abs(camera.y-y2) ? y1-e : y2+e;
+            quad(matrices,vc,x1,y,z1, x2,y,z1, x2,y,z2, x1,y,z2);
+        }
     }
 
     private static void quad(MatrixStack m, VertexConsumer vc, double ax,double ay,double az,double bx,double by,double bz,double cx,double cy,double cz,double dx,double dy,double dz) {
@@ -46,3 +53,4 @@ public final class ScreenRenderer {
     }
     private static void vertex(MatrixStack m, VertexConsumer vc,double x,double y,double z) { vc.vertex(m.peek(),(float)x,(float)y,(float)z).color(0,0,0,235); }
 }
+
