@@ -1,11 +1,13 @@
 package de.galaxushd.mpsqcamera;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
 
 import java.io.IOException;
 import java.net.URI;
@@ -16,13 +18,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.concurrent.CompletableFuture;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import net.minecraft.util.math.Vec3d;
+import java.util.concurrent.CompletableFuture;
 
-/** The client only keeps its own random token. No Supabase secret is ever stored here. */
+/** HTTP access to the public MPSQ Edge Function. No Supabase secret is stored in the mod. */
 public final class MpsqApiClient {
     public static final String API_URL = "https://hbikjzzkxsvjoqnedbmm.supabase.co/functions/v1/mpsq-api";
     private static final Path TOKEN_FILE = FabricLoader.getInstance().getConfigDir().resolve("mpsqcamera-token.txt");
@@ -55,14 +56,14 @@ public final class MpsqApiClient {
 
     public static CompletableFuture<List<LocalCameraStore.CameraData>> loadCameras() {
         return get("/cameras").thenApply(json -> {
-            JsonArray rows = json.getAsJsonArray();
             List<LocalCameraStore.CameraData> cameras = new ArrayList<>();
-            for (JsonElement element : rows) {
+            for (JsonElement element : json.getAsJsonArray()) {
                 JsonObject row = element.getAsJsonObject();
                 LocalCameraStore.CameraKind kind = "BODYCAM".equals(row.get("kind").getAsString())
                         ? LocalCameraStore.CameraKind.BODYCAM : LocalCameraStore.CameraKind.STATIC;
                 Vec3d position = row.get("x").isJsonNull() ? null : new Vec3d(row.get("x").getAsDouble(), row.get("y").getAsDouble(), row.get("z").getAsDouble());
-                UUID wearer = row.has("body_owner_id") && !row.get("body_owner_id").isJsonNull() ? UUID.fromString(row.get("body_owner_id").getAsString()) : null;
+                UUID wearer = row.has("body_owner_id") && !row.get("body_owner_id").isJsonNull()
+                        ? UUID.fromString(row.get("body_owner_id").getAsString()) : null;
                 cameras.add(new LocalCameraStore.CameraData(UUID.fromString(row.get("id").getAsString()), row.get("name").getAsString(), kind,
                         row.get("dimension").getAsString(), position, row.get("yaw").getAsFloat(), row.get("pitch").getAsFloat(), wearer));
             }
@@ -70,9 +71,31 @@ public final class MpsqApiClient {
         });
     }
 
+    public static CompletableFuture<List<LocalScreenStore.LocalScreenData>> loadScreens() {
+        return get("/screens").thenApply(json -> {
+            List<LocalScreenStore.LocalScreenData> screens = new ArrayList<>();
+            for (JsonElement element : json.getAsJsonArray()) {
+                JsonObject row = element.getAsJsonObject();
+                BlockPos pos1 = new BlockPos(row.get("pos1_x").getAsInt(), row.get("pos1_y").getAsInt(), row.get("pos1_z").getAsInt());
+                BlockPos pos2 = new BlockPos(row.get("pos2_x").getAsInt(), row.get("pos2_y").getAsInt(), row.get("pos2_z").getAsInt());
+                LocalScreenStore.ScreenInputType mode = "CAMERA".equals(row.get("mode").getAsString())
+                        ? LocalScreenStore.ScreenInputType.CAMERA : LocalScreenStore.ScreenInputType.LINK;
+                UUID cameraId = null;
+                if (row.has("mpsq_screen_cameras") && row.get("mpsq_screen_cameras").isJsonArray()) {
+                    JsonArray cameras = row.getAsJsonArray("mpsq_screen_cameras");
+                    if (!cameras.isEmpty()) cameraId = UUID.fromString(cameras.get(0).getAsJsonObject().get("camera_id").getAsString());
+                }
+                UUID groupId = row.has("group_id") && !row.get("group_id").isJsonNull() ? UUID.fromString(row.get("group_id").getAsString()) : null;
+                screens.add(new LocalScreenStore.LocalScreenData(UUID.fromString(row.get("id").getAsString()), pos1, pos2,
+                        row.get("name").getAsString(), new Vec3d(pos1.getX(), pos1.getY(), pos1.getZ()), mode,
+                        row.has("cinema_url") && !row.get("cinema_url").isJsonNull() ? row.get("cinema_url").getAsString() : "", cameraId, groupId));
+            }
+            return screens;
+        });
+    }
+
     private static CompletableFuture<JsonElement> request(String method, String path, JsonObject body, boolean authenticated) {
-        HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(API_URL + path))
-                .timeout(Duration.ofSeconds(15)).header("Accept", "application/json");
+        HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(API_URL + path)).timeout(Duration.ofSeconds(15)).header("Accept", "application/json");
         if (authenticated) {
             if (token == null || token.isBlank()) return CompletableFuture.failedFuture(new IllegalStateException("MPSQ ist nicht verbunden"));
             request.header("x-mpsq-token", token);
