@@ -13,6 +13,8 @@ public class MpsqCameraClient implements ClientModInitializer {
         LOGGER.info("[MPSQ Kameras] Client mod initialized.");
         ScreenCreationManager.initialize();
         CameraCreationManager.initialize();
+        CameraHologramManager.initialize();
+        CameraHologramManager.initialize();
         SelectionRenderer.initialize();
         ScreenRenderer.initialize();
         MpsqApiClient.initialize().exceptionally(error -> {
