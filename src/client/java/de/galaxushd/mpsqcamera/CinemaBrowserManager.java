@@ -83,20 +83,24 @@ public final class CinemaBrowserManager {
             CinemaPlaybackStore.PlaybackState playback = CinemaPlaybackStore.get(screen.id());
             if (!playback.playing()) continue;
 
+            BrowserSession current = BROWSERS.get(screen.id());
+            if (current != null && current.revision() == playback.revision()) {
+                wanted.add(screen.id());
+                continue;
+            }
+
             String url = playableUrl(screen.url(), currentPosition(playback));
             if (url == null) {
                 FAILED_BROWSERS.add(screen.id());
                 continue;
             }
             wanted.add(screen.id());
-            BrowserSession current = BROWSERS.get(screen.id());
-            if (current != null && current.url().equals(url)) continue;
 
             close(screen.id());
             try {
                 MCEFBrowser browser = MCEF.createBrowser(url, false);
                 browser.resize(BROWSER_WIDTH, BROWSER_HEIGHT);
-                BROWSERS.put(screen.id(), new BrowserSession(url, browser));
+                BROWSERS.put(screen.id(), new BrowserSession(playback.revision(), browser));
                 FAILED_BROWSERS.remove(screen.id());
             } catch (RuntimeException error) {
                 FAILED_BROWSERS.add(screen.id());
@@ -165,7 +169,8 @@ public final class CinemaBrowserManager {
         return Math.max(0L, state.positionMs() + System.currentTimeMillis() - state.updatedAtMs());
     }
 
-    private record BrowserSession(String url, MCEFBrowser browser) { }
+    /** A browser is recreated only for an explicit Start/Stop/seek command, never for normal time progression. */
+    private record BrowserSession(long revision, MCEFBrowser browser) { }
 
     /** Mirrors WatchParty's MCEF compatibility check without relying on raw OpenGL texture ids. */
     private static final class McefTextureCompat {

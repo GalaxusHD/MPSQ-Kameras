@@ -6,8 +6,13 @@ import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 
 public final class ScreenRenderer {
     private static final double RENDER_RANGE = 64.0;
@@ -59,8 +64,10 @@ public final class ScreenRenderer {
 
             drawScreenFace(
                     matrices,
+                    consumers,
                     vertices,
                     ScreenAccessStore.front(screen.id()),
+                    CinemaBrowserManager.texture(screen.id()),
                     CinemaBrowserManager.status(screen),
                     x1, y1, z1,
                     x2, y2, z2
@@ -72,14 +79,16 @@ public final class ScreenRenderer {
 
     private static void drawScreenFace(
             MatrixStack matrices,
+            VertexConsumerProvider consumers,
             VertexConsumer vertices,
             String front,
+            Identifier browserTexture,
             CinemaBrowserManager.ScreenStatus status,
             double x1, double y1, double z1,
             double x2, double y2, double z2
     ) {
         if ("SOUTH".equals(front)) {
-            drawPlane(matrices, vertices, status,
+            drawPlane(matrices, consumers, vertices, browserTexture, status,
                     x2, y1, z2 + SURFACE_OFFSET,
                     x1, y1, z2 + SURFACE_OFFSET,
                     x1, y2, z2 + SURFACE_OFFSET,
@@ -88,7 +97,7 @@ public final class ScreenRenderer {
         }
 
         if ("WEST".equals(front)) {
-            drawPlane(matrices, vertices, status,
+            drawPlane(matrices, consumers, vertices, browserTexture, status,
                     x1 - SURFACE_OFFSET, y1, z2,
                     x1 - SURFACE_OFFSET, y1, z1,
                     x1 - SURFACE_OFFSET, y2, z1,
@@ -97,7 +106,7 @@ public final class ScreenRenderer {
         }
 
         if ("EAST".equals(front)) {
-            drawPlane(matrices, vertices, status,
+            drawPlane(matrices, consumers, vertices, browserTexture, status,
                     x2 + SURFACE_OFFSET, y1, z1,
                     x2 + SURFACE_OFFSET, y1, z2,
                     x2 + SURFACE_OFFSET, y2, z2,
@@ -106,7 +115,7 @@ public final class ScreenRenderer {
         }
 
         if ("UP".equals(front)) {
-            drawPlane(matrices, vertices, status,
+            drawPlane(matrices, consumers, vertices, browserTexture, status,
                     x1, y2 + SURFACE_OFFSET, z1,
                     x1, y2 + SURFACE_OFFSET, z2,
                     x2, y2 + SURFACE_OFFSET, z2,
@@ -115,7 +124,7 @@ public final class ScreenRenderer {
         }
 
         if ("DOWN".equals(front)) {
-            drawPlane(matrices, vertices, status,
+            drawPlane(matrices, consumers, vertices, browserTexture, status,
                     x2, y1 - SURFACE_OFFSET, z1,
                     x2, y1 - SURFACE_OFFSET, z2,
                     x1, y1 - SURFACE_OFFSET, z2,
@@ -124,7 +133,7 @@ public final class ScreenRenderer {
         }
 
         // NORTH ist der Standard für ältere Bildschirme.
-        drawPlane(matrices, vertices, status,
+        drawPlane(matrices, consumers, vertices, browserTexture, status,
                 x1, y1, z1 - SURFACE_OFFSET,
                 x2, y1, z1 - SURFACE_OFFSET,
                 x2, y2, z1 - SURFACE_OFFSET,
@@ -133,7 +142,9 @@ public final class ScreenRenderer {
 
     private static void drawPlane(
             MatrixStack matrices,
+            VertexConsumerProvider consumers,
             VertexConsumer vertices,
+            Identifier browserTexture,
             CinemaBrowserManager.ScreenStatus status,
             double ax, double ay, double az,
             double bx, double by, double bz,
@@ -141,22 +152,19 @@ public final class ScreenRenderer {
             double dx, double dy, double dz
     ) {
         // Schwarze Bildschirmfläche.
-        quad(matrices, vertices,
-                ax, ay, az,
-                bx, by, bz,
-                cx, cy, cz,
-                dx, dy, dz,
-                0, 0, 0, 235);
-
-        drawStatusText(
-                matrices,
-                vertices,
-                status,
-                ax, ay, az,
-                bx, by, bz,
-                cx, cy, cz,
-                dx, dy, dz
-        );
+        if (browserTexture == null) {
+            quad(matrices, vertices, ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz, 0, 0, 0, 235);
+            drawStatusText(matrices, vertices, status, ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz);
+        } else {
+            VertexConsumer textureVertices = MinecraftRenderCompat.textureVertices(consumers, browserTexture);
+            if (textureVertices == null) {
+                quad(matrices, vertices, ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz, 0, 0, 0, 235);
+                drawStatusText(matrices, vertices, CinemaBrowserManager.ScreenStatus.ERROR,
+                        ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz);
+            } else {
+                texturedQuad(matrices, textureVertices, ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz);
+            }
+        }
 
         Vec3d bottomLeft = new Vec3d(ax, ay, az);
         Vec3d bottomRight = new Vec3d(bx, by, bz);
@@ -326,5 +334,79 @@ public final class ScreenRenderer {
     ) {
         vertices.vertex(matrices.peek(), (float) x, (float) y, (float) z)
                 .color(red, green, blue, alpha);
+    }
+
+    private static void texturedQuad(
+            MatrixStack matrices,
+            VertexConsumer vertices,
+            double ax, double ay, double az,
+            double bx, double by, double bz,
+            double cx, double cy, double cz,
+            double dx, double dy, double dz
+    ) {
+        texturedVertex(matrices, vertices, ax, ay, az, 0.0f, 1.0f);
+        texturedVertex(matrices, vertices, bx, by, bz, 1.0f, 1.0f);
+        texturedVertex(matrices, vertices, cx, cy, cz, 1.0f, 0.0f);
+        texturedVertex(matrices, vertices, dx, dy, dz, 0.0f, 0.0f);
+    }
+
+    private static void texturedVertex(
+            MatrixStack matrices,
+            VertexConsumer vertices,
+            double x, double y, double z,
+            float u, float v
+    ) {
+        vertices.vertex(matrices.peek(), (float) x, (float) y, (float) z)
+                .color(255, 255, 255, 255)
+                .texture(u, v)
+                .overlay(0)
+                .light(0xF000F0)
+                .normal(0.0f, 0.0f, 1.0f);
+    }
+
+    /** Obtains a texture render layer across the small 1.21.x mapping differences. */
+    private static final class MinecraftRenderCompat {
+        private static final Method LAYER_METHOD = findLayerMethod();
+        private static boolean warningLogged;
+
+        private MinecraftRenderCompat() {
+        }
+
+        private static VertexConsumer textureVertices(VertexConsumerProvider consumers, Identifier texture) {
+            if (LAYER_METHOD == null) {
+                return null;
+            }
+            try {
+                Object layer = LAYER_METHOD.invoke(null, texture);
+                return layer instanceof RenderLayer renderLayer ? consumers.getBuffer(renderLayer) : null;
+            } catch (IllegalAccessException | InvocationTargetException exception) {
+                if (!warningLogged) {
+                    warningLogged = true;
+                    MpsqCameraClient.LOGGER.warn("Kino-Render-Layer konnte nicht erstellt werden", exception);
+                }
+                return null;
+            }
+        }
+
+        private static Method findLayerMethod() {
+            for (String className : new String[]{"net.minecraft.client.render.RenderLayers", "net.minecraft.class_12249"}) {
+                try {
+                    Class<?> type = Class.forName(className);
+                    for (Method method : type.getMethods()) {
+                        if (Modifier.isStatic(method.getModifiers())
+                                && method.getParameterCount() == 1
+                                && method.getParameterTypes()[0] == Identifier.class
+                                && RenderLayer.class.isAssignableFrom(method.getReturnType())
+                                && method.getName().toLowerCase().contains("cutout")) {
+                            return method;
+                        }
+                    }
+                } catch (ClassNotFoundException ignored) {
+                    // The next candidate covers a different mapping version.
+                }
+            }
+            MpsqCameraClient.LOGGER.warn("Kein kompatibler Render-Layer fuer Kino-Bildschirme gefunden.");
+            return null;
+        }
     }
 }
