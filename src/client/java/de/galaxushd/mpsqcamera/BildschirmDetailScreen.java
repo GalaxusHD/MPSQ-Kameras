@@ -147,14 +147,6 @@ public final class BildschirmDetailScreen extends Screen {
                 .build());
         y += ROW_GAP;
 
-        openBrowserButton = addDrawableChild(ButtonWidget.builder(
-                        Text.literal("Browser öffnen"),
-                        button -> openBrowser()
-                )
-                .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT)
-                .build());
-        y += ROW_GAP;
-
         updateLinkButtons(streamUrlField.getText());
         streamUrlField.setChangedListener(this::updateLinkButtons);
 
