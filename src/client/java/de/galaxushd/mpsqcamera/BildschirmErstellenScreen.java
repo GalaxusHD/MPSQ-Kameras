@@ -88,7 +88,7 @@ public class BildschirmErstellenScreen extends Screen {
         body.addProperty("dimension", client.world.getRegistryKey().getValue().toString());
         body.add("pos1", position(pos1));
         body.add("pos2", position(pos2));
-        body.addProperty("front", clickedSide.getName().toUpperCase(java.util.Locale.ROOT));
+        body.addProperty("front", clickedSide.asString().toUpperCase(java.util.Locale.ROOT));
         body.addProperty("cinemaUrl", url);
         MpsqApiClient.post("/screens", body).thenCompose(result -> ScreenSyncManager.refresh()).exceptionally(error -> {
             MpsqCameraClient.LOGGER.warn("Bildschirm konnte nicht synchronisiert werden", error);
