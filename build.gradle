@@ -21,6 +21,7 @@ base {
 repositories {
 	mavenCentral()
 	maven { url = "https://maven.fabricmc.net/" }
+	maven { url = "https://keksuccino.github.io/maven/" }
 }
 
 dependencies {
@@ -29,6 +30,9 @@ dependencies {
 	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+	// MCEF provides the in-game Chromium browser used by cinema screens.
+	modImplementation "de.keksuccino:mcef-fabric:2.1.7-1.21.6"
 }
 
 loom {
