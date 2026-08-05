@@ -183,10 +183,6 @@ public final class BildschirmDetailScreen extends Screen {
         if (saveLinkButton != null) {
             saveLinkButton.active = valid;
         }
-
-        if (openBrowserButton != null) {
-            openBrowserButton.active = valid;
-        }
     }
 
 
