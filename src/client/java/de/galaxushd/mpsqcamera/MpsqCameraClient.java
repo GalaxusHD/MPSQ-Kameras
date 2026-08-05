@@ -17,6 +17,7 @@ public class MpsqCameraClient implements ClientModInitializer {
         CameraHologramManager.initialize();
         SelectionRenderer.initialize();
         ScreenRenderer.initialize();
+        CinemaBrowserManager.initialize();
         MpsqApiClient.initialize().thenCompose(ignored ->
                 MpsqApiClient.loadCameras().thenAccept(cameras -> {
                     MinecraftClient.getInstance().execute(() -> {

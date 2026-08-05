@@ -1,5 +1,6 @@
 package de.galaxushd.mpsqcamera;
 
+import com.google.gson.JsonObject;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ConfirmScreen;
 import net.minecraft.client.gui.screen.Screen;
@@ -10,238 +11,259 @@ import net.minecraft.text.Text;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Detail-Menü für einen einzelnen Bildschirm.
- * Unterscheidung zwischen Ersteller und Besucher/Zuschauer.
- */
-public class BildschirmDetailScreen extends Screen {
+/** Detail menu for a screen, including the persisted cinema controls. */
+public final class BildschirmDetailScreen extends Screen {
+    private static final int BUTTON_WIDTH = 180;
+    private static final int BUTTON_HEIGHT = 20;
+    private static final int ROW_GAP = 26;
+    private static final long SEEK_AMOUNT_MS = 10_000L;
 
     private final Screen parent;
-    private final String bildschirmId;
-    private final String bildschirmName;
+    private final UUID screenId;
+    private final String screenName;
     private final boolean isCreator;
-
-    // Creator-only
-    private boolean isCameraMode = true; // default = Kamera
-    private String activationCode;
+    private boolean cameraMode;
+    private String activationCode = "------";
     private String streamUrl = "";
-    private LocalScreenStore.DeleteBehavior deleteBehavior = LocalScreenStore.DeleteBehavior.NIE;
     private TextFieldWidget streamUrlField;
+    private ButtonWidget saveLinkButton;
 
-    public BildschirmDetailScreen(Screen parent, String bildschirmId, String name, boolean isCreator) {
+    public BildschirmDetailScreen(Screen parent, String screenId, String name, boolean isCreator) {
         super(Text.literal(name));
         this.parent = parent;
-        this.bildschirmId = bildschirmId;
-        this.bildschirmName = name;
+        this.screenId = UUID.fromString(screenId);
+        this.screenName = name;
         this.isCreator = isCreator;
-        // Zeige den gemeinsamen Gruppencode, falls vorhanden
-        this.activationCode = resolveActivationCode(bildschirmId);
-    }
-
-    /** Gibt den Code zurück: Gruppencode wenn in Gruppe, sonst Screen-eigenen Code. */
-    private static String resolveActivationCode(String screenIdStr) {
-        try {
-            UUID id = UUID.fromString(screenIdStr);
-            String serverCode = ScreenAccessStore.code(id);
-            if (!"------".equals(serverCode)) return serverCode;
-            Optional<LocalScreenStore.LocalGroupData> group = LocalScreenStore.getGroupForScreen(id);
-            return group.map(LocalScreenStore.LocalGroupData::sharedCode).orElse("-----");
-        } catch (IllegalArgumentException e) {
-            return "-----";
-        }
+        loadCachedScreenData();
     }
 
     @Override
     protected void init() {
-        // Aktivierungscode bei jedem init() aktualisieren (z.B. nach Gruppierung)
-        activationCode = resolveActivationCode(bildschirmId);
-
-        int cx = this.width / 2;
-        int buttonY = this.height / 2 - 56;
-        int buttonX = cx - 90;
-        int buttonW = 180;
-        int gapY = 26;
+        loadCachedScreenData();
+        activationCode = ScreenAccessStore.code(screenId);
+        int x = width / 2 - BUTTON_WIDTH / 2;
+        int y = 54;
 
         if (isCreator) {
-            // ── CREATOR MODE ──────────────────────────────────────────────
-            // Kamera/Kino Toggle
-            addDrawableChild(ButtonWidget.builder(
-                    Text.literal("Modus: " + (isCameraMode ? "Kamera" : "Kino")),
-                    b -> toggleCameraKino()
-            ).dimensions(buttonX, buttonY, buttonW, 20).build());
-            buttonY += gapY;
+            addDrawableChild(ButtonWidget.builder(Text.literal("Modus: " + (cameraMode ? "Kamera" : "Kino")), button -> toggleMode())
+                    .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT).build());
+            y += ROW_GAP;
 
-            // Stream-URL Input (nur im Kino-Modus sichtbar)
-            if (!isCameraMode) {
-                streamUrlField = new TextFieldWidget(this.textRenderer, buttonX, buttonY, buttonW, 20, Text.literal("URL"));
-                streamUrlField.setText(streamUrl);
-                addDrawableChild(streamUrlField);
-                buttonY += gapY;
+            if (cameraMode) {
+                addDrawableChild(ButtonWidget.builder(Text.literal("Kameras verwalten..."), button -> client.setScreen(new CameraAssignmentScreen(this, screenId)))
+                        .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT).build());
+                y += ROW_GAP;
+            } else {
+                y = addCinemaControls(x, y);
             }
 
-            // Aktivierungscode (klickbar zum Kopieren)
-            addDrawableChild(ButtonWidget.builder(
-                    Text.literal("Code: " + activationCode),
-                    b -> copyActivationCode()
-            ).dimensions(buttonX, buttonY, buttonW, 20).build());
-            buttonY += gapY;
-
-            // Gruppierung
-            addDrawableChild(ButtonWidget.builder(
-                    Text.literal("Gruppieren..."),
-                    b -> openGroupingMenu()
-            ).dimensions(buttonX, buttonY, buttonW, 20).build());
-            buttonY += gapY;
-
-            if (isScreenInGroup()) {
-                addDrawableChild(ButtonWidget.builder(
-                        Text.literal("Aus Gruppe entfernen"),
-                        b -> removeFromGroup()
-                ).dimensions(buttonX, buttonY, buttonW, 20).build());
-                buttonY += gapY;
+            addDrawableChild(ButtonWidget.builder(Text.literal("Code: " + activationCode), button -> copyActivationCode())
+                    .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT).build());
+            y += ROW_GAP;
+            addDrawableChild(ButtonWidget.builder(Text.literal("Gruppieren..."), button -> client.setScreen(new BildschirmGroupingScreen(this)))
+                    .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT).build());
+            y += ROW_GAP;
+            if (ScreenAccessStore.inGroup(screenId)) {
+                addDrawableChild(ButtonWidget.builder(Text.literal("Aus Gruppe entfernen"), button -> removeFromGroup())
+                        .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT).build());
+                y += ROW_GAP;
             }
-
-            // Lösch-Verhalten Toggle (3 Modi) – aktualisiert sich nach Klick
-            addDrawableChild(ButtonWidget.builder(
-                    Text.literal("Löschen: " + deleteBehavior.getLabel()),
-                    b -> cycleDeleteBehavior()
-            ).dimensions(buttonX, buttonY, buttonW, 20).build());
-            buttonY += gapY;
-
-            // Bildschirm löschen (in beiden Modi: Kamera + Kino)
-            addDrawableChild(ButtonWidget.builder(
-                    Text.literal("Bildschirm löschen"),
-                    b -> confirmDeleteScreen()
-            ).dimensions(buttonX, buttonY, buttonW, 20).build());
-        } else {
-            // ── GUEST MODE ────────────────────────────────────────────────
-            // Nur Anzeige + Buttons zum Zurück/Verlassen
-            addDrawableChild(ButtonWidget.builder(
-                    Text.literal("Bildschirm verlassen"),
-                    b -> leaveScreen()
-            ).dimensions(buttonX, buttonY, buttonW, 20).build());
+            addDrawableChild(ButtonWidget.builder(Text.literal("Bildschirm löschen"), button -> confirmDelete())
+                    .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT).build());
+        } else if (!cameraMode) {
+            CinemaPlaybackStore.PlaybackState state = CinemaPlaybackStore.get(screenId);
+            addDrawableChild(ButtonWidget.builder(Text.literal(state.playing() ? "Kino läuft" : "Kino angehalten"), button -> { })
+                    .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT).build());
         }
 
-        // Zurück-Button (beide Modi)
-        addDrawableChild(ButtonWidget.builder(
-                Text.literal("Zurück zur Liste"),
-                b -> this.client.setScreen(parent)
-        ).dimensions(this.width / 2 - 75, this.height - 36, 150, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal("Zurück zur Liste"), button -> client.setScreen(parent))
+                .dimensions(width / 2 - 75, height - 36, 150, BUTTON_HEIGHT).build());
     }
 
-    private void toggleCameraKino() {
-        if (streamUrlField != null) {
-            streamUrl = streamUrlField.getText();
+    private int addCinemaControls(int x, int y) {
+        streamUrlField = new TextFieldWidget(textRenderer, x, y, BUTTON_WIDTH, BUTTON_HEIGHT, Text.literal("Video- oder Stream-Link"));
+        streamUrlField.setMaxLength(2048);
+        streamUrlField.setPlaceholder(Text.literal("https://youtube.com/... oder https://twitch.tv/..."));
+        streamUrlField.setText(streamUrl);
+        addDrawableChild(streamUrlField);
+        y += ROW_GAP;
+
+        saveLinkButton = addDrawableChild(ButtonWidget.builder(Text.literal("Link speichern"), button -> saveCinemaLink())
+                .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT).build());
+        saveLinkButton.active = CinemaBrowserManager.normalizeHttpUrl(streamUrlField.getText()) != null;
+        streamUrlField.setChangedListener(value -> saveLinkButton.active = CinemaBrowserManager.normalizeHttpUrl(value) != null);
+        y += ROW_GAP;
+
+        addDrawableChild(ButtonWidget.builder(Text.literal("Link zurücksetzen"), button -> resetCinemaLink())
+                .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT).build());
+        y += ROW_GAP;
+
+        ButtonWidget openBrowser = addDrawableChild(ButtonWidget.builder(Text.literal("Browser öffnen"), button -> {
+                    String url = CinemaBrowserManager.normalizeHttpUrl(streamUrlField.getText());
+                    if (url != null) client.setScreen(new CinemaBrowserScreen(this, url));
+                })
+                .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT).build());
+        openBrowser.active = CinemaBrowserManager.normalizeHttpUrl(streamUrlField.getText()) != null;
+        streamUrlField.setChangedListener(value -> {
+            boolean valid = CinemaBrowserManager.normalizeHttpUrl(value) != null;
+            saveLinkButton.active = valid;
+            openBrowser.active = valid;
+        });
+        y += ROW_GAP;
+
+        CinemaPlaybackStore.PlaybackState state = CinemaPlaybackStore.get(screenId);
+        addDrawableChild(ButtonWidget.builder(Text.literal(state.playing() ? "Stop" : "Start"), button -> setPlaying(!state.playing()))
+                .dimensions(x, y, 88, BUTTON_HEIGHT).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal("-10 Sekunden"), button -> seek(-SEEK_AMOUNT_MS))
+                .dimensions(x + 92, y, 88, BUTTON_HEIGHT).build());
+        y += ROW_GAP;
+        addDrawableChild(ButtonWidget.builder(Text.literal("+10 Sekunden"), button -> seek(SEEK_AMOUNT_MS))
+                .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT).build());
+        return y + ROW_GAP;
+    }
+
+    private void loadCachedScreenData() {
+        LocalScreenStore.LocalScreenData screen = LocalScreenStore.findById(screenId).orElse(null);
+        if (screen != null) {
+            cameraMode = screen.inputType() == LocalScreenStore.ScreenInputType.CAMERA;
+            streamUrl = screen.url() == null ? "" : screen.url();
         }
-        isCameraMode = !isCameraMode;
-        clearAndInit();
     }
 
-    /** Wechselt den Löschmodus und aktualisiert sofort die Anzeige. */
-    private void cycleDeleteBehavior() {
-        deleteBehavior = deleteBehavior.next();
-        clearAndInit();
+    private void toggleMode() {
+        if (cameraMode && ScreenCameraStore.hasCameras(screenId)) {
+            showStatus("Entferne zuerst alle Kameras von diesem Bildschirm.");
+            return;
+        }
+        if (!cameraMode && !streamUrl.isBlank()) {
+            showStatus("Setze zuerst den Kino-Link zurück.");
+            return;
+        }
+
+        boolean newCameraMode = !cameraMode;
+        JsonObject body = new JsonObject();
+        body.addProperty("mode", newCameraMode ? "CAMERA" : "KINO");
+        MpsqApiClient.patch("/screens/" + screenId, body)
+                .thenCompose(ignored -> ScreenSyncManager.refresh())
+                .whenComplete((ignored, error) -> client.execute(() -> {
+                    if (error != null) showStatus("Modus konnte nicht gespeichert werden.");
+                    else clearAndInit();
+                }));
+    }
+
+    private void saveCinemaLink() {
+        String url = CinemaBrowserManager.normalizeHttpUrl(streamUrlField.getText());
+        if (url == null) {
+            showStatus("Bitte gib einen gültigen http(s)-Link ein.");
+            return;
+        }
+        JsonObject body = new JsonObject();
+        body.addProperty("mode", "KINO");
+        body.addProperty("cinemaUrl", url);
+        saveScreenPatch(body, "Link gespeichert.");
+    }
+
+    private void resetCinemaLink() {
+        JsonObject body = new JsonObject();
+        body.addProperty("cinemaUrl", "");
+        body.add("playbackState", playbackJson(false, 0L));
+        saveScreenPatch(body, "Link zurückgesetzt.");
+    }
+
+    private void setPlaying(boolean playing) {
+        CinemaPlaybackStore.PlaybackState state = CinemaPlaybackStore.get(screenId);
+        JsonObject body = new JsonObject();
+        body.add("playbackState", playbackJson(playing, currentPlaybackPosition(state)));
+        saveScreenPatch(body, playing ? "Kino gestartet." : "Kino gestoppt.");
+    }
+
+    private void seek(long delta) {
+        CinemaPlaybackStore.PlaybackState state = CinemaPlaybackStore.get(screenId);
+        JsonObject body = new JsonObject();
+        body.add("playbackState", playbackJson(state.playing(), Math.max(0L, currentPlaybackPosition(state) + delta));
+        saveScreenPatch(body, "Position geändert.");
+    }
+
+    private JsonObject playbackJson(boolean playing, long positionMs) {
+        CinemaPlaybackStore.PlaybackState previous = CinemaPlaybackStore.get(screenId);
+        JsonObject playback = new JsonObject();
+        playback.addProperty("playing", playing);
+        playback.addProperty("positionMs", positionMs);
+        playback.addProperty("revision", previous.revision() + 1L);
+        return playback;
+    }
+
+    private long currentPlaybackPosition(CinemaPlaybackStore.PlaybackState state) {
+        if (!state.playing() || state.updatedAtMs() <= 0L) return state.positionMs();
+        return Math.max(0L, state.positionMs() + System.currentTimeMillis() - state.updatedAtMs());
+    }
+
+    private void saveScreenPatch(JsonObject body, String successMessage) {
+        MpsqApiClient.patch("/screens/" + screenId, body)
+                .thenCompose(ignored -> ScreenSyncManager.refresh())
+                .whenComplete((ignored, error) -> client.execute(() -> {
+                    if (error != null) showStatus("Änderung konnte nicht gespeichert werden.");
+                    else {
+                        showStatus(successMessage);
+                        clearAndInit();
+                    }
+                }));
     }
 
     private void copyActivationCode() {
-        this.client.keyboard.setClipboard(activationCode);
-        MpsqCameraClient.LOGGER.info("[MPSQ] Code " + activationCode + " kopiert.");
-    }
-
-    private void openGroupingMenu() {
-        MpsqCameraClient.LOGGER.info("[MPSQ] Gruppieren für " + bildschirmName);
-        this.client.setScreen(new BildschirmGroupingScreen(this));
+        client.keyboard.setClipboard(activationCode);
+        showStatus("Code kopiert.");
     }
 
     private void removeFromGroup() {
-        try {
-            UUID id = UUID.fromString(bildschirmId);
-            MpsqApiClient.post("/screens/" + id + "/remove-from-group", new com.google.gson.JsonObject())
-                    .thenCompose(result -> ScreenSyncManager.refresh())
-                    .thenRun(() -> this.client.execute(() -> this.client.setScreen(parent)))
-                    .exceptionally(error -> { MpsqCameraClient.LOGGER.warn("Bildschirm konnte nicht aus der Gruppe entfernt werden", error); return null; });
-        } catch (IllegalArgumentException error) {
-            MpsqCameraClient.LOGGER.warn("Ungültige Bildschirm-ID", error);
-        }
+        MpsqApiClient.post("/screens/" + screenId + "/remove-from-group", new JsonObject())
+                .thenCompose(ignored -> ScreenSyncManager.refresh())
+                .whenComplete((ignored, error) -> client.execute(() -> client.setScreen(parent)));
     }
 
-    /** Öffnet einen Bestätigungs-Dialog bevor der Bildschirm gelöscht wird. */
-    private void confirmDeleteScreen() {
-        boolean isInGroup = isScreenInGroup();
-        String confirmText = isInGroup
-                ? "Bildschirm '" + bildschirmName + "' ist Teil einer Gruppe.\nDie gesamte Gruppe wird gelöscht!"
-                : "Bildschirm '" + bildschirmName + "' wirklich löschen?";
-
-        this.client.setScreen(new ConfirmScreen(
-                confirmed -> {
-                    if (confirmed) {
-                        deleteScreen();
-                    } else {
-                        this.client.setScreen(this);
-                    }
-                },
-                Text.literal("Bildschirm löschen"),
-                Text.literal(confirmText),
-                Text.literal("Ja, löschen"),
-                Text.literal("Abbrechen")
-        ));
-    }
-
-    /** Löscht den Bildschirm (oder die ganze Gruppe falls in Gruppe). */
-    private void deleteScreen() {
-        try {
-            UUID id = UUID.fromString(bildschirmId);
-            boolean wasInGroup = isScreenInGroup();
-            MpsqApiClient.delete("/screens/" + id).thenCompose(result -> ScreenSyncManager.refresh()).thenRun(() ->
-                    this.client.execute(() -> this.client.setScreen(parent))
-            ).exceptionally(error -> { MpsqCameraClient.LOGGER.warn("Screen delete failed", error); return null; });
-            if (wasInGroup) {
-                MpsqCameraClient.LOGGER.info("[MPSQ] Gruppe von Bildschirm " + bildschirmName + " gelöscht.");
+    private void confirmDelete() {
+        boolean inGroup = ScreenAccessStore.inGroup(screenId);
+        client.setScreen(new ConfirmScreen(confirmed -> {
+            if (confirmed) {
+                MpsqApiClient.delete("/screens/" + screenId)
+                        .thenCompose(ignored -> ScreenSyncManager.refresh())
+                        .whenComplete((ignored, error) -> client.execute(() -> client.setScreen(parent)));
             } else {
-                MpsqCameraClient.LOGGER.info("[MPSQ] Bildschirm " + bildschirmName + " gelöscht.");
+                client.setScreen(this);
             }
-        } catch (IllegalArgumentException e) {
-            MpsqCameraClient.LOGGER.warn("[MPSQ] Ungültige Bildschirm-ID: " + bildschirmId);
-        }
-        this.client.setScreen(parent);
+        }, Text.literal("Bildschirm löschen"), Text.literal(inGroup ? "Die gesamte Gruppe wird gelöscht." : "Bildschirm wirklich löschen?"), Text.literal("Löschen"), Text.literal("Abbrechen")));
     }
 
-    private boolean isScreenInGroup() {
-        try {
-            UUID id = UUID.fromString(bildschirmId);
-            return ScreenAccessStore.inGroup(id) || LocalScreenStore.getGroupForScreen(id).isPresent();
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-    }
-
-    private void leaveScreen() {
-        MpsqCameraClient.LOGGER.info("[MPSQ] Besucher verlässt Bildschirm " + bildschirmName);
-        this.client.setScreen(parent);
+    private void showStatus(String message) {
+        if (client.player != null) client.player.sendMessage(Text.literal(message), true);
     }
 
     @Override
     public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
         super.renderBackground(context, mouseX, mouseY, delta);
-        MpsqTheme.drawBackground(context, this.width, this.height);
+        MpsqTheme.drawBackground(context, width, height);
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
-
-        int cx = this.width / 2;
-        int startY = 28;
-
-        // Titel
-        context.drawCenteredTextWithShadow(
-                this.textRenderer, this.title, cx, startY, MpsqTheme.TEXT_TITEL);
-        startY += 16;
-
-        // Trennlinie
-        context.fill(cx - 130, startY, cx + 130, startY + 1, 0x44FFFFFF);
+        int centerX = width / 2;
+        context.drawCenteredTextWithShadow(textRenderer, title, centerX, 28, MpsqTheme.TEXT_TITEL);
+        context.fill(centerX - 130, 44, centerX + 130, 45, 0x44FFFFFF);
+        if (!cameraMode) {
+            LocalScreenStore.LocalScreenData screen = LocalScreenStore.findById(screenId).orElse(null);
+            if (screen != null) {
+                CinemaBrowserManager.ScreenStatus status = CinemaBrowserManager.status(screen);
+                String label = status == CinemaBrowserManager.ScreenStatus.NONE ? "Kino bereit" : status.label();
+                int color = status == CinemaBrowserManager.ScreenStatus.NONE ? MpsqTheme.TEXT_GEDAEMPT
+                        : (status.red() << 16) | (status.green() << 8) | status.blue();
+                context.drawCenteredTextWithShadow(textRenderer, Text.literal(label), centerX, 46, color);
+            }
+        }
     }
 
     @Override
-    public boolean shouldPause() { return false; }
+    public boolean shouldPause() {
+        return false;
+    }
 }

@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.time.Instant;
 import java.util.concurrent.CompletableFuture;
 
 /** Fetches screens and their server-only metadata in one request. */
@@ -20,7 +21,7 @@ public final class ScreenSyncManager {
     private ScreenSyncManager() { }
     public static CompletableFuture<Void> refresh() {
         return MpsqApiClient.get("/screens").thenAccept(json -> {
-            List<LocalScreenStore.LocalScreenData> screens = new ArrayList<>(); Map<UUID, String> codes = new HashMap<>(); Map<UUID, LocalScreenStore.LocalGroupData> groups = new HashMap<>(); Set<UUID> owned = new HashSet<>();
+            List<LocalScreenStore.LocalScreenData> screens = new ArrayList<>(); Map<UUID, String> codes = new HashMap<>(); Map<UUID, LocalScreenStore.LocalGroupData> groups = new HashMap<>(); Set<UUID> owned = new HashSet<>(); Map<UUID, CinemaPlaybackStore.PlaybackState> playbackStates = new HashMap<>();
             for (JsonElement item : json.getAsJsonArray()) {
                 JsonObject row = item.getAsJsonObject(); UUID id = UUID.fromString(row.get("id").getAsString());
                 BlockPos p1 = new BlockPos(row.get("pos1_x").getAsInt(), row.get("pos1_y").getAsInt(), row.get("pos1_z").getAsInt()); BlockPos p2 = new BlockPos(row.get("pos2_x").getAsInt(), row.get("pos2_y").getAsInt(), row.get("pos2_z").getAsInt());
@@ -41,9 +42,27 @@ public final class ScreenSyncManager {
                 }
                 ScreenCameraStore.put(id, cameraIds);
                 UUID firstCameraId = cameraIds.isEmpty() ? null : cameraIds.get(0);
+                if (row.has("playback_state") && row.get("playback_state").isJsonObject()) {
+                    JsonObject state = row.getAsJsonObject("playback_state");
+                    boolean playing = state.has("playing") && state.get("playing").getAsBoolean();
+                    long positionMs = state.has("positionMs") ? state.get("positionMs").getAsLong() : 0L;
+                    long revision = state.has("revision") ? state.get("revision").getAsLong() : 0L;
+                    long updatedAtMs = 0L;
+                    try {
+                        if (row.has("updated_at") && !row.get("updated_at").isJsonNull()) {
+                            updatedAtMs = Instant.parse(row.get("updated_at").getAsString()).toEpochMilli();
+                        }
+                    } catch (RuntimeException ignored) { }
+                    playbackStates.put(id, new CinemaPlaybackStore.PlaybackState(playing, Math.max(0L, positionMs), revision, updatedAtMs));
+                }
                 screens.add(new LocalScreenStore.LocalScreenData(id, p1, p2, row.get("name").getAsString(), new Vec3d(p1.getX(), p1.getY(), p1.getZ()), mode, row.get("cinema_url").getAsString(), firstCameraId, groupId));
             }
-            MinecraftClient.getInstance().execute(() -> { LocalScreenStore.replaceAll(screens); ScreenAccessStore.replace(codes, groups, owned); });
+            MinecraftClient.getInstance().execute(() -> {
+                LocalScreenStore.replaceAll(screens);
+                ScreenAccessStore.replace(codes, groups, owned);
+                CinemaPlaybackStore.replace(playbackStates);
+                CinemaBrowserManager.synchronize();
+            });
         });
     }
 }

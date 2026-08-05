@@ -54,6 +54,11 @@ public final class MpsqApiClient {
     public static CompletableFuture<JsonElement> patch(String path, JsonObject body) { return request("PATCH", path, body, true); }
     public static CompletableFuture<JsonElement> delete(String path) { return request("DELETE", path, null, true); }
 
+    /** True once this client has a local API token and can safely poll shared screen state. */
+    public static boolean isReady() {
+        return token != null && !token.isBlank();
+    }
+
     public static CompletableFuture<List<LocalCameraStore.CameraData>> loadCameras() {
         return get("/cameras").thenApply(json -> {
             List<LocalCameraStore.CameraData> cameras = new ArrayList<>();
