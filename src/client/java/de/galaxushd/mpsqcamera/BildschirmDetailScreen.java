@@ -180,9 +180,10 @@ public final class BildschirmDetailScreen extends Screen {
     private void seek(long delta) {
         CinemaPlaybackStore.PlaybackState state = CinemaPlaybackStore.get(screenId);
         JsonObject body = new JsonObject();
-        body.add("playbackState", playbackJson(state.playing(), Math.max(0L, currentPlaybackPosition(state) + delta));
-        saveScreenPatch(body, "Position geändert.");
-    }
+        body.add("playbackState", playbackJson(
+        state.playing(),
+        Math.max(0L, currentPlaybackPosition(state) + delta)
+));
 
     private JsonObject playbackJson(boolean playing, long positionMs) {
         CinemaPlaybackStore.PlaybackState previous = CinemaPlaybackStore.get(screenId);
