@@ -4,9 +4,12 @@ import com.cinemamod.mcef.MCEF;
 import com.cinemamod.mcef.MCEFBrowser;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.util.Identifier;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -30,6 +33,13 @@ public final class CinemaBrowserManager {
     private CinemaBrowserManager() { }
 
     public static void initialize() {
+        try {
+            if (!MCEF.isInitialized() && !MCEF.initialize()) {
+                MpsqCameraClient.LOGGER.warn("MCEF konnte nicht initialisiert werden; Kino-Bildschirme bleiben offline.");
+            }
+        } catch (RuntimeException exception) {
+            MpsqCameraClient.LOGGER.warn("MCEF konnte nicht initialisiert werden; Kino-Bildschirme bleiben offline.", exception);
+        }
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.world == null) {
                 clear();
@@ -44,10 +54,14 @@ public final class CinemaBrowserManager {
         });
     }
 
-    /** Returns the OpenGL texture created by MCEF, or zero when no video is ready. */
-    public static int textureId(UUID screenId) {
+    /**
+     * Returns MCEF's Minecraft texture identifier. MCEF changed the method name
+     * between releases, so this deliberately supports both public variants.
+     */
+    public static Identifier texture(UUID screenId) {
         BrowserSession session = BROWSERS.get(screenId);
-        return session == null ? 0 : session.browser().getRenderer().getTextureID();
+        if (session == null || !session.browser().isTextureReady()) return null;
+        return McefTextureCompat.texture(session.browser());
     }
 
     /** Human-readable state used by the screen renderer while no browser image is available. */
@@ -57,7 +71,7 @@ public final class CinemaBrowserManager {
         if (normalizeHttpUrl(screen.url()) == null || FAILED_BROWSERS.contains(screen.id())) return ScreenStatus.ERROR;
         if (!MCEF.isInitialized()) return ScreenStatus.LOADING;
         if (!CinemaPlaybackStore.get(screen.id()).playing()) return ScreenStatus.OFFLINE;
-        return textureId(screen.id()) == 0 ? ScreenStatus.LOADING : ScreenStatus.NONE;
+        return texture(screen.id()) == null ? ScreenStatus.LOADING : ScreenStatus.NONE;
     }
 
     public static void synchronize() {
@@ -152,6 +166,40 @@ public final class CinemaBrowserManager {
     }
 
     private record BrowserSession(String url, MCEFBrowser browser) { }
+
+    /** Mirrors WatchParty's MCEF compatibility check without relying on raw OpenGL texture ids. */
+    private static final class McefTextureCompat {
+        private static final Method TEXTURE_METHOD = findTextureMethod();
+        private static boolean warningLogged;
+
+        private McefTextureCompat() { }
+
+        private static Identifier texture(MCEFBrowser browser) {
+            if (browser == null || TEXTURE_METHOD == null) return null;
+            try {
+                Object value = TEXTURE_METHOD.invoke(browser);
+                return value instanceof Identifier identifier ? identifier : null;
+            } catch (IllegalAccessException | InvocationTargetException exception) {
+                if (!warningLogged) {
+                    warningLogged = true;
+                    MpsqCameraClient.LOGGER.warn("MCEF-Texturkennung konnte nicht gelesen werden", exception);
+                }
+                return null;
+            }
+        }
+
+        private static Method findTextureMethod() {
+            for (String name : new String[]{"getTextureIdentifier", "getTextureLocation"}) {
+                try {
+                    return MCEFBrowser.class.getMethod(name);
+                } catch (NoSuchMethodException ignored) {
+                    // Try the next MCEF API variant.
+                }
+            }
+            MpsqCameraClient.LOGGER.warn("Diese MCEF-Version stellt keine Minecraft-Texturkennung bereit.");
+            return null;
+        }
+    }
 
     public enum ScreenStatus {
         NONE("", 0, 0, 0),
