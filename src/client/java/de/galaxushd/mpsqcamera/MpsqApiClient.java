@@ -83,7 +83,10 @@ public final class MpsqApiClient {
                 UUID cameraId = null;
                 if (row.has("mpsq_screen_cameras") && row.get("mpsq_screen_cameras").isJsonArray()) {
                     JsonArray cameras = row.getAsJsonArray("mpsq_screen_cameras");
-                    if (!cameras.isEmpty()) cameraId = UUID.fromString(cameras.get(0).getAsJsonObject().get("camera_id").getAsString());
+                    List<UUID> cameraIds = new ArrayList<>();
+                    for (JsonElement camera : cameras) cameraIds.add(UUID.fromString(camera.getAsJsonObject().get("camera_id").getAsString()));
+                    ScreenCameraStore.put(UUID.fromString(row.get("id").getAsString()), cameraIds);
+                    if (!cameraIds.isEmpty()) cameraId = cameraIds.get(0);
                 }
                 UUID groupId = row.has("group_id") && !row.get("group_id").isJsonNull() ? UUID.fromString(row.get("group_id").getAsString()) : null;
                 screens.add(new LocalScreenStore.LocalScreenData(UUID.fromString(row.get("id").getAsString()), pos1, pos2,

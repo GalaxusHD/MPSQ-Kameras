@@ -36,6 +36,8 @@ public final class ScreenCreationManager {
 
 	private static boolean wasUsePressedLastTick = false;
 	private static boolean wasEscPressedLastTick = false;
+	private static boolean wasPreviousCameraPressed = false;
+	private static boolean wasNextCameraPressed = false;
 	private static BlockPos selectionPos1;
 	private static Direction selectionSide;
 	private static long lastViewEnterAttemptMs = 0L;
@@ -75,6 +77,8 @@ public final class ScreenCreationManager {
 
 		boolean usePressed = client.options.useKey.isPressed();
 		boolean escPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), GLFW.GLFW_KEY_ESCAPE);
+		boolean previousCameraPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), GLFW.GLFW_KEY_COMMA);
+		boolean nextCameraPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), GLFW.GLFW_KEY_PERIOD);
 
 		if (client.player == null || client.world == null) {
 			if (activeViewSession != null) {
@@ -88,8 +92,15 @@ public final class ScreenCreationManager {
 		ClientPlayerEntity player = client.player;
 
 		if (activeViewSession != null) {
+			LocalScreenStore.findByAnchor(activeViewSession.sourceAnchor()).ifPresent(screen -> {
+				if (previousCameraPressed && !wasPreviousCameraPressed) switchCamera(screen.id(), -1);
+				if (nextCameraPressed && !wasNextCameraPressed) switchCamera(screen.id(), 1);
+			});
 			handleActiveViewSession(client, player, usePressed, escPressed);
 		} else {
+			LocalScreenStore.LocalScreenData lookedAt = getScreenAtCrosshair(client).orElse(null);
+			if (lookedAt != null && previousCameraPressed && !wasPreviousCameraPressed) switchCamera(lookedAt.id(), -1);
+			if (lookedAt != null && nextCameraPressed && !wasNextCameraPressed) switchCamera(lookedAt.id(), 1);
 			handlePassiveScreenLook(client, player);
 
 			if (usePressed && !wasUsePressedLastTick) {
@@ -110,21 +121,34 @@ public final class ScreenCreationManager {
 
 		wasUsePressedLastTick = usePressed;
 		wasEscPressedLastTick = escPressed;
+		wasPreviousCameraPressed = previousCameraPressed;
+		wasNextCameraPressed = nextCameraPressed;
+	}
+
+	private static void switchCamera(UUID screenId, int direction) {
+		UUID camera = ScreenCameraStore.next(screenId, direction);
+		if (camera != null) MpsqCameraClient.LOGGER.info("[MPSQ] Aktive Kamera gewechselt: {}", camera);
+	}
+
+	private static UUID activeCameraId(LocalScreenStore.LocalScreenData screen) {
+		UUID active = ScreenCameraStore.active(screen.id());
+		return active != null ? active : screen.cameraId();
 	}
 
 	private static void handlePassiveScreenLook(MinecraftClient client, ClientPlayerEntity player) {
 		LocalScreenStore.LocalScreenData screen = getScreenAtCrosshair(client).orElse(null);
-		if (screen == null || screen.inputType() != LocalScreenStore.ScreenInputType.CAMERA || screen.cameraId() == null) {
+		UUID cameraId = screen == null ? null : activeCameraId(screen);
+		if (screen == null || screen.inputType() != LocalScreenStore.ScreenInputType.CAMERA || cameraId == null) {
 			return;
 		}
 
-		Optional<LocalScreenStore.LocalScreenData> cameraScreen = LocalScreenStore.findById(screen.cameraId());
-		if (cameraScreen.isEmpty()) {
+		Optional<LocalCameraStore.CameraData> cameraScreen = LocalCameraStore.find(cameraId);
+		if (cameraScreen.isEmpty() || cameraScreen.get().position() == null) {
 			sendOfflineHint(player);
 			return;
 		}
 
-		Vec3d cameraPos = toCameraPos(cameraScreen.get().createdFrom());
+		Vec3d cameraPos = cameraScreen.get().position();
 		if (!isCameraAreaLoadedByAnyPlayer(client, cameraPos)) {
 			sendOfflineHint(player);
 		}
@@ -146,17 +170,18 @@ public final class ScreenCreationManager {
 		lastViewEnterAttemptMs = now;
 
 		LocalScreenStore.LocalScreenData screen = getScreenAtCrosshair(client).orElse(null);
-		if (screen == null || screen.inputType() != LocalScreenStore.ScreenInputType.CAMERA || screen.cameraId() == null) {
+		UUID cameraId = screen == null ? null : activeCameraId(screen);
+		if (screen == null || screen.inputType() != LocalScreenStore.ScreenInputType.CAMERA || cameraId == null) {
 			return;
 		}
 
-		LocalScreenStore.LocalScreenData cameraScreen = LocalScreenStore.findById(screen.cameraId()).orElse(null);
-		if (cameraScreen == null) {
+		LocalCameraStore.CameraData cameraScreen = LocalCameraStore.find(cameraId).orElse(null);
+		if (cameraScreen == null || cameraScreen.position() == null) {
 			sendOfflineHint(player);
 			return;
 		}
 
-		Vec3d cameraPos = toCameraPos(cameraScreen.createdFrom());
+		Vec3d cameraPos = cameraScreen.position();
 		if (!isCameraAreaLoadedByAnyPlayer(client, cameraPos)) {
 			sendOfflineHint(player);
 			return;
@@ -173,7 +198,7 @@ public final class ScreenCreationManager {
 
 		activeViewSession = new ViewSession(
 				screen.pos1().toImmutable(),
-				screen.cameraId(),
+				cameraId,
 				player.getPos(),
 				client.world.getRegistryKey(),
 				previousCamera,
@@ -215,12 +240,13 @@ public final class ScreenCreationManager {
 
 		LocalScreenStore.LocalScreenData sourceScreen = LocalScreenStore.findByAnchor(session.sourceAnchor()).orElse(null);
 		if (sourceScreen == null) return false;
-		if (sourceScreen.inputType() != LocalScreenStore.ScreenInputType.CAMERA || sourceScreen.cameraId() == null) return false;
+		UUID cameraId = activeCameraId(sourceScreen);
+		if (sourceScreen.inputType() != LocalScreenStore.ScreenInputType.CAMERA || cameraId == null) return false;
 
-		LocalScreenStore.LocalScreenData cameraScreen = LocalScreenStore.findById(session.cameraId()).orElse(null);
-		if (cameraScreen == null) return false;
+		LocalCameraStore.CameraData cameraScreen = LocalCameraStore.find(cameraId).orElse(null);
+		if (cameraScreen == null || cameraScreen.position() == null) return false;
 
-		Vec3d cameraPos = toCameraPos(cameraScreen.createdFrom());
+		Vec3d cameraPos = cameraScreen.position();
 		session.cameraEntity().setPosition(cameraPos);
 		return true;
 	}

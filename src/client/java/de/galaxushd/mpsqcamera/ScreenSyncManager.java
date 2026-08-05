@@ -1,6 +1,7 @@
 package de.galaxushd.mpsqcamera;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.math.BlockPos;
@@ -28,7 +29,19 @@ public final class ScreenSyncManager {
                 if (row.has("front") && !row.get("front").isJsonNull()) ScreenAccessStore.setFront(id, row.get("front").getAsString());
                 if (groupId != null && row.has("mpsq_screen_groups") && row.get("mpsq_screen_groups").isJsonObject()) { JsonObject group = row.getAsJsonObject("mpsq_screen_groups"); groups.put(id, new LocalScreenStore.LocalGroupData(groupId, group.get("activation_code").getAsString())); }
                 LocalScreenStore.ScreenInputType mode = "CAMERA".equals(row.get("mode").getAsString()) ? LocalScreenStore.ScreenInputType.CAMERA : LocalScreenStore.ScreenInputType.LINK;
-                screens.add(new LocalScreenStore.LocalScreenData(id, p1, p2, row.get("name").getAsString(), new Vec3d(p1.getX(), p1.getY(), p1.getZ()), mode, row.get("cinema_url").getAsString(), null, groupId));
+                List<UUID> cameraIds = new ArrayList<>();
+                if (row.has("mpsq_screen_cameras") && row.get("mpsq_screen_cameras").isJsonArray()) {
+                    JsonArray assignments = row.getAsJsonArray("mpsq_screen_cameras");
+                    for (JsonElement assignment : assignments) {
+                        JsonObject link = assignment.getAsJsonObject();
+                        if (link.has("camera_id") && !link.get("camera_id").isJsonNull()) {
+                            cameraIds.add(UUID.fromString(link.get("camera_id").getAsString()));
+                        }
+                    }
+                }
+                ScreenCameraStore.put(id, cameraIds);
+                UUID firstCameraId = cameraIds.isEmpty() ? null : cameraIds.get(0);
+                screens.add(new LocalScreenStore.LocalScreenData(id, p1, p2, row.get("name").getAsString(), new Vec3d(p1.getX(), p1.getY(), p1.getZ()), mode, row.get("cinema_url").getAsString(), firstCameraId, groupId));
             }
             MinecraftClient.getInstance().execute(() -> { LocalScreenStore.replaceAll(screens); ScreenAccessStore.replace(codes, groups, owned); });
         });
