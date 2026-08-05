@@ -25,7 +25,7 @@ public class BildschirmListScreen extends Screen {
     private void loadJoinedScreens() {
         bildschirme.clear();
         for (LocalScreenStore.LocalScreenData screen : LocalScreenStore.getAllScreens()) {
-            bildschirme.add(new BildschirmEntry(screen.id().toString(), screen.name(), true));
+            bildschirme.add(new BildschirmEntry(screen.id().toString(), screen.name(), ScreenAccessStore.isOwner(screen.id())));
         }
         clampScroll();
     }

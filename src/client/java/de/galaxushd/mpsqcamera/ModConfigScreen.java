@@ -1,5 +1,6 @@
 package de.galaxushd.mpsqcamera;
 
+import com.google.gson.JsonObject;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -35,7 +36,7 @@ public class ModConfigScreen extends Screen {
         int menuX = (width - buttonWidth) / 2;
         codeInputField = new TextFieldWidget(textRenderer, menuX, menuTop, buttonWidth, BUTTON_HEIGHT,
                 Text.translatable("gui.mpsqcamera.main.activation.placeholder"));
-        codeInputField.setMaxLength(5);
+        codeInputField.setMaxLength(6);
         codeInputField.setChangedListener(code -> updateActivationCodeState());
         addDrawableChild(codeInputField);
         setInitialFocus(codeInputField);
@@ -57,9 +58,16 @@ public class ModConfigScreen extends Screen {
         boolean hasFocus = codeInputField.isFocused();
         boolean hasText = !codeInputField.getText().isEmpty();
         codeInputField.setPlaceholder(hasFocus || hasText ? Text.empty() : Text.translatable("gui.mpsqcamera.main.activation.placeholder"));
-        if (joinButton != null) joinButton.active = codeInputField.getText().length() == 5;
+        if (joinButton != null) joinButton.active = codeInputField.getText().length() == 6;
     }
-    private void submitCode() { if (codeInputField.getText().length() == 5) { MpsqCameraClient.LOGGER.info("[MPSQ] Trete Bildschirm mit Code bei: {}", codeInputField.getText()); codeInputField.setText(""); } }
+    private void submitCode() {
+        if (codeInputField.getText().length() != 6) return;
+        JsonObject body = new JsonObject();
+        body.addProperty("code", codeInputField.getText());
+        MpsqApiClient.post("/join", body).thenCompose(result -> ScreenSyncManager.refresh()).thenRun(() ->
+                client.execute(() -> { codeInputField.setText(""); client.setScreen(new BildschirmListScreen(this)); })
+        ).exceptionally(error -> { MpsqCameraClient.LOGGER.warn("MPSQ-Code konnte nicht verwendet werden", error); return null; });
+    }
     private void openScreens() { client.setScreen(new BildschirmListScreen(this)); }
     private void openCameras() { client.setScreen(new CameraListScreen(this)); }
     private void openSettings() { client.setScreen(new ModSettingsScreen(this)); }

@@ -42,6 +42,8 @@ public class BildschirmDetailScreen extends Screen {
     private static String resolveActivationCode(String screenIdStr) {
         try {
             UUID id = UUID.fromString(screenIdStr);
+            String serverCode = ScreenAccessStore.code(id);
+            if (!"------".equals(serverCode)) return serverCode;
             Optional<LocalScreenStore.LocalGroupData> group = LocalScreenStore.getGroupForScreen(id);
             return group.map(LocalScreenStore.LocalGroupData::sharedCode).orElse("-----");
         } catch (IllegalArgumentException e) {
@@ -90,6 +92,14 @@ public class BildschirmDetailScreen extends Screen {
                     b -> openGroupingMenu()
             ).dimensions(buttonX, buttonY, buttonW, 20).build());
             buttonY += gapY;
+
+            if (isScreenInGroup()) {
+                addDrawableChild(ButtonWidget.builder(
+                        Text.literal("Aus Gruppe entfernen"),
+                        b -> removeFromGroup()
+                ).dimensions(buttonX, buttonY, buttonW, 20).build());
+                buttonY += gapY;
+            }
 
             // Lösch-Verhalten Toggle (3 Modi) – aktualisiert sich nach Klick
             addDrawableChild(ButtonWidget.builder(
@@ -143,6 +153,18 @@ public class BildschirmDetailScreen extends Screen {
         this.client.setScreen(new BildschirmGroupingScreen(this));
     }
 
+    private void removeFromGroup() {
+        try {
+            UUID id = UUID.fromString(bildschirmId);
+            MpsqApiClient.post("/screens/" + id + "/remove-from-group", new com.google.gson.JsonObject())
+                    .thenCompose(result -> ScreenSyncManager.refresh())
+                    .thenRun(() -> this.client.execute(() -> this.client.setScreen(parent)))
+                    .exceptionally(error -> { MpsqCameraClient.LOGGER.warn("Bildschirm konnte nicht aus der Gruppe entfernt werden", error); return null; });
+        } catch (IllegalArgumentException error) {
+            MpsqCameraClient.LOGGER.warn("Ungültige Bildschirm-ID", error);
+        }
+    }
+
     /** Öffnet einen Bestätigungs-Dialog bevor der Bildschirm gelöscht wird. */
     private void confirmDeleteScreen() {
         boolean isInGroup = isScreenInGroup();
@@ -170,7 +192,9 @@ public class BildschirmDetailScreen extends Screen {
         try {
             UUID id = UUID.fromString(bildschirmId);
             boolean wasInGroup = isScreenInGroup();
-            LocalScreenStore.removeScreen(id);
+            MpsqApiClient.delete("/screens/" + id).thenCompose(result -> ScreenSyncManager.refresh()).thenRun(() ->
+                    this.client.execute(() -> this.client.setScreen(parent))
+            ).exceptionally(error -> { MpsqCameraClient.LOGGER.warn("Screen delete failed", error); return null; });
             if (wasInGroup) {
                 MpsqCameraClient.LOGGER.info("[MPSQ] Gruppe von Bildschirm " + bildschirmName + " gelöscht.");
             } else {
@@ -185,7 +209,7 @@ public class BildschirmDetailScreen extends Screen {
     private boolean isScreenInGroup() {
         try {
             UUID id = UUID.fromString(bildschirmId);
-            return LocalScreenStore.getGroupForScreen(id).isPresent();
+            return ScreenAccessStore.inGroup(id) || LocalScreenStore.getGroupForScreen(id).isPresent();
         } catch (IllegalArgumentException e) {
             return false;
         }

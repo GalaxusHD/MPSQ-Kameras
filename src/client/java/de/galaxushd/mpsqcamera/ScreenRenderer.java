@@ -37,15 +37,20 @@ public final class ScreenRenderer {
             double x2 = Math.max(a.getX(), b.getX()) + 1.0;
             double y2 = Math.max(a.getY(), b.getY()) + 1.0;
             double z2 = Math.max(a.getZ(), b.getZ()) + 1.0;
-            drawFrontSurface(matrices, quads, x1, y1, z1, x2, y2, z2);
+            drawFrontSurface(matrices, quads, ScreenAccessStore.front(screen.id()), x1, y1, z1, x2, y2, z2);
             VertexRendering.drawBox(matrices, lines, x1, y1, z1, x2, y2, z2, 1.0f, 0.9f, 0.0f, 0.8f);
         }
         matrices.pop();
     }
 
     /** The front is deterministic: one surface only, never a dynamically mirrored rear surface. */
-    private static void drawFrontSurface(MatrixStack matrices, VertexConsumer vertices,
+    private static void drawFrontSurface(MatrixStack matrices, VertexConsumer vertices, String front,
                                          double x1, double y1, double z1, double x2, double y2, double z2) {
+        if ("SOUTH".equals(front)) { quad(matrices, vertices, x2, y1, z2 + SURFACE_OFFSET, x1, y1, z2 + SURFACE_OFFSET, x1, y2, z2 + SURFACE_OFFSET, x2, y2, z2 + SURFACE_OFFSET); return; }
+        if ("WEST".equals(front)) { quad(matrices, vertices, x1 - SURFACE_OFFSET, y1, z2, x1 - SURFACE_OFFSET, y1, z1, x1 - SURFACE_OFFSET, y2, z1, x1 - SURFACE_OFFSET, y2, z2); return; }
+        if ("EAST".equals(front)) { quad(matrices, vertices, x2 + SURFACE_OFFSET, y1, z1, x2 + SURFACE_OFFSET, y1, z2, x2 + SURFACE_OFFSET, y2, z2, x2 + SURFACE_OFFSET, y2, z1); return; }
+        if ("UP".equals(front)) { quad(matrices, vertices, x1, y2 + SURFACE_OFFSET, z1, x1, y2 + SURFACE_OFFSET, z2, x2, y2 + SURFACE_OFFSET, z2, x2, y2 + SURFACE_OFFSET, z1); return; }
+        if ("DOWN".equals(front)) { quad(matrices, vertices, x2, y1 - SURFACE_OFFSET, z1, x2, y1 - SURFACE_OFFSET, z2, x1, y1 - SURFACE_OFFSET, z2, x1, y1 - SURFACE_OFFSET, z1); return; }
         double dx = x2 - x1;
         double dy = y2 - y1;
         double dz = z2 - z1;

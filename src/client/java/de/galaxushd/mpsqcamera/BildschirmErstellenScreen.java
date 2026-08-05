@@ -85,10 +85,9 @@ public class BildschirmErstellenScreen extends Screen {
         body.addProperty("dimension", client.world.getRegistryKey().getValue().toString());
         body.add("pos1", position(pos1));
         body.add("pos2", position(pos2));
+        body.addProperty("front", frontFor(createdFrom));
         body.addProperty("cinemaUrl", url);
-        MpsqApiClient.post("/screens", body).thenCompose(result -> MpsqApiClient.loadScreens()).thenAccept(screens ->
-                client.execute(() -> LocalScreenStore.replaceAll(screens))
-        ).exceptionally(error -> {
+        MpsqApiClient.post("/screens", body).thenCompose(result -> ScreenSyncManager.refresh()).exceptionally(error -> {
             MpsqCameraClient.LOGGER.warn("Bildschirm konnte nicht synchronisiert werden", error);
             return null;
         });
@@ -101,6 +100,16 @@ public class BildschirmErstellenScreen extends Screen {
         result.addProperty("y", pos.getY());
         result.addProperty("z", pos.getZ());
         return result;
+    }
+
+    private String frontFor(Vec3d player) {
+        double minX = Math.min(pos1.getX(), pos2.getX()), maxX = Math.max(pos1.getX(), pos2.getX()) + 1;
+        double minY = Math.min(pos1.getY(), pos2.getY()), maxY = Math.max(pos1.getY(), pos2.getY()) + 1;
+        double minZ = Math.min(pos1.getZ(), pos2.getZ()), maxZ = Math.max(pos1.getZ(), pos2.getZ()) + 1;
+        double[] distances = { Math.abs(player.z - minZ), Math.abs(player.z - maxZ), Math.abs(player.x - minX), Math.abs(player.x - maxX), Math.abs(player.y - maxY), Math.abs(player.y - minY) };
+        String[] faces = { "NORTH", "SOUTH", "WEST", "EAST", "UP", "DOWN" };
+        int nearest = 0; for (int i = 1; i < distances.length; i++) if (distances[i] < distances[nearest]) nearest = i;
+        return faces[nearest];
     }
 
     @Override

@@ -1,5 +1,7 @@
 package de.galaxushd.mpsqcamera;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -54,10 +56,13 @@ public class GroupCreationScreen extends Screen {
             MpsqCameraClient.LOGGER.info("[MPSQ] Mindestens 2 Bildschirme für eine Gruppe auswählen.");
             return;
         }
-        LocalScreenStore.LocalGroupData group = LocalScreenStore.createGroup(selectedScreenIds);
-        MpsqCameraClient.LOGGER.info("[MPSQ] Gruppe erstellt mit Code: " + group.sharedCode()
-                + " (" + selectedScreenIds.size() + " Bildschirme)");
-        this.client.setScreen(parent);
+        JsonArray ids = new JsonArray();
+        for (UUID id : selectedScreenIds) ids.add(id.toString());
+        JsonObject body = new JsonObject();
+        body.add("screenIds", ids);
+        MpsqApiClient.post("/groups", body).thenCompose(result -> ScreenSyncManager.refresh()).thenRun(() ->
+                this.client.execute(() -> this.client.setScreen(parent))
+        ).exceptionally(error -> { MpsqCameraClient.LOGGER.warn("Gruppe konnte nicht erstellt werden", error); return null; });
     }
 
     @Override
