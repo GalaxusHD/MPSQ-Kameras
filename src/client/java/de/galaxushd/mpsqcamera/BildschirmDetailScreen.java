@@ -299,7 +299,10 @@ public final class BildschirmDetailScreen extends Screen {
                 .thenCompose(ignored -> ScreenSyncManager.refresh())
                 .whenComplete((ignored, error) -> client.execute(() -> {
                     if (error != null) {
-                        showStatus("Änderung konnte nicht gespeichert werden.");
+                        Throwable cause = error.getCause() == null ? error : error.getCause();
+                        String message = cause.getMessage();
+                        MpsqCameraClient.LOGGER.warn("Bildschirmänderung konnte nicht gespeichert werden", error);
+                        showStatus("Nicht gespeichert: " + (message == null ? "Unbekannter Serverfehler" : message));
                     } else {
                         showStatus(successMessage);
                         clearAndInit();

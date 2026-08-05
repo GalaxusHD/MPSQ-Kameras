@@ -89,28 +89,28 @@ public final class ScreenRenderer {
     ) {
         if ("SOUTH".equals(front)) {
             drawPlane(matrices, consumers, vertices, browserTexture, status,
-                    x2, y1, z2 + SURFACE_OFFSET,
                     x1, y1, z2 + SURFACE_OFFSET,
-                    x1, y2, z2 + SURFACE_OFFSET,
-                    x2, y2, z2 + SURFACE_OFFSET);
+                    x2, y1, z2 + SURFACE_OFFSET,
+                    x2, y2, z2 + SURFACE_OFFSET,
+                    x1, y2, z2 + SURFACE_OFFSET);
             return;
         }
 
         if ("WEST".equals(front)) {
             drawPlane(matrices, consumers, vertices, browserTexture, status,
-                    x1 - SURFACE_OFFSET, y1, z2,
                     x1 - SURFACE_OFFSET, y1, z1,
-                    x1 - SURFACE_OFFSET, y2, z1,
-                    x1 - SURFACE_OFFSET, y2, z2);
+                    x1 - SURFACE_OFFSET, y1, z2,
+                    x1 - SURFACE_OFFSET, y2, z2,
+                    x1 - SURFACE_OFFSET, y2, z1);
             return;
         }
 
         if ("EAST".equals(front)) {
             drawPlane(matrices, consumers, vertices, browserTexture, status,
-                    x2 + SURFACE_OFFSET, y1, z1,
                     x2 + SURFACE_OFFSET, y1, z2,
-                    x2 + SURFACE_OFFSET, y2, z2,
-                    x2 + SURFACE_OFFSET, y2, z1);
+                    x2 + SURFACE_OFFSET, y1, z1,
+                    x2 + SURFACE_OFFSET, y2, z1,
+                    x2 + SURFACE_OFFSET, y2, z2);
             return;
         }
 
@@ -134,10 +134,10 @@ public final class ScreenRenderer {
 
         // NORTH ist der Standard für ältere Bildschirme.
         drawPlane(matrices, consumers, vertices, browserTexture, status,
-                x1, y1, z1 - SURFACE_OFFSET,
                 x2, y1, z1 - SURFACE_OFFSET,
-                x2, y2, z1 - SURFACE_OFFSET,
-                x1, y2, z1 - SURFACE_OFFSET);
+                x1, y1, z1 - SURFACE_OFFSET,
+                x1, y2, z1 - SURFACE_OFFSET,
+                x2, y2, z1 - SURFACE_OFFSET);
     }
 
     private static void drawPlane(
