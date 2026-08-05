@@ -189,13 +189,6 @@ public final class BildschirmDetailScreen extends Screen {
         }
     }
 
-    private void openBrowser() {
-        String url = CinemaBrowserManager.normalizeHttpUrl(streamUrlField.getText());
-
-        if (url != null) {
-            client.setScreen(new CinemaBrowserScreen(this, url));
-        }
-    }
 
     private void loadCachedScreenData() {
         LocalScreenStore.LocalScreenData screen = LocalScreenStore.findById(screenId).orElse(null);
