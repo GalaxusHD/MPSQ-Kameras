@@ -26,7 +26,6 @@ public final class BildschirmDetailScreen extends Screen {
 
     private TextFieldWidget streamUrlField;
     private ButtonWidget saveLinkButton;
-    private ButtonWidget openBrowserButton;
 
     public BildschirmDetailScreen(Screen parent, String screenId, String name, boolean isCreator) {
         super(Text.literal(name));
