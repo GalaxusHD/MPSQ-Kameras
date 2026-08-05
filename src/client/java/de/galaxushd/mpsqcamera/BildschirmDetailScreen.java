@@ -116,66 +116,69 @@ public final class BildschirmDetailScreen extends Screen {
                 .build());
     }
 
-    private int addCinemaControls(int x, int y) {
-        streamUrlField = new TextFieldWidget(
-                textRenderer,
-                x,
-                y,
-                BUTTON_WIDTH,
-                BUTTON_HEIGHT,
-                Text.literal("Video- oder Stream-Link")
-        );
-        streamUrlField.setMaxLength(2048);
-        streamUrlField.setPlaceholder(Text.literal("https://youtube.com/... oder https://twitch.tv/..."));
-        streamUrlField.setText(streamUrl);
-        addDrawableChild(streamUrlField);
-        y += ROW_GAP;
+   private int addCinemaControls(int x, int y) {
+    int controlGap = 4;
+    int halfWidth = (BUTTON_WIDTH - controlGap) / 2;
+    int thirdWidth = (BUTTON_WIDTH - 2 * controlGap) / 3;
 
-        saveLinkButton = addDrawableChild(ButtonWidget.builder(
-                        Text.literal("Link speichern"),
-                        button -> saveCinemaLink()
-                )
-                .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT)
-                .build());
-        y += ROW_GAP;
+    streamUrlField = new TextFieldWidget(
+            textRenderer, x, y, BUTTON_WIDTH, BUTTON_HEIGHT,
+            Text.literal("Video- oder Stream-Link")
+    );
+    streamUrlField.setMaxLength(2048);
+    streamUrlField.setPlaceholder(Text.literal("https://youtube.com/... oder https://twitch.tv/..."));
+    streamUrlField.setText(streamUrl);
+    addDrawableChild(streamUrlField);
+    y += ROW_GAP;
 
-        addDrawableChild(ButtonWidget.builder(
-                        Text.literal("Link zurücksetzen"),
-                        button -> resetCinemaLink()
-                )
-                .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT)
-                .build());
-        y += ROW_GAP;
+    saveLinkButton = addDrawableChild(ButtonWidget.builder(
+                    Text.literal("Link speichern"),
+                    button -> saveCinemaLink()
+            )
+            .dimensions(x, y, halfWidth, BUTTON_HEIGHT)
+            .build());
 
-        updateLinkButtons(streamUrlField.getText());
-        streamUrlField.setChangedListener(this::updateLinkButtons);
+    addDrawableChild(ButtonWidget.builder(
+                    Text.literal("Link zurücksetzen"),
+                    button -> resetCinemaLink()
+            )
+            .dimensions(x + halfWidth + controlGap, y, halfWidth, BUTTON_HEIGHT)
+            .build());
+    y += ROW_GAP;
 
-        CinemaPlaybackStore.PlaybackState state = CinemaPlaybackStore.get(screenId);
+    updateLinkButtons(streamUrlField.getText());
+    streamUrlField.setChangedListener(this::updateLinkButtons);
 
-        addDrawableChild(ButtonWidget.builder(
-                        Text.literal(state.playing() ? "Stop" : "Start"),
-                        button -> setPlaying(!state.playing())
-                )
-                .dimensions(x, y, 88, BUTTON_HEIGHT)
-                .build());
+    CinemaPlaybackStore.PlaybackState state = CinemaPlaybackStore.get(screenId);
 
-        addDrawableChild(ButtonWidget.builder(
-                        Text.literal("-10 Sekunden"),
-                        button -> seek(-SEEK_AMOUNT_MS)
-                )
-                .dimensions(x + 92, y, 88, BUTTON_HEIGHT)
-                .build());
-        y += ROW_GAP;
+    addDrawableChild(ButtonWidget.builder(
+                    Text.literal("-10 Sekunden"),
+                    button -> seek(-SEEK_AMOUNT_MS)
+            )
+            .dimensions(x, y, thirdWidth, BUTTON_HEIGHT)
+            .build());
 
-        addDrawableChild(ButtonWidget.builder(
-                        Text.literal("+10 Sekunden"),
-                        button -> seek(SEEK_AMOUNT_MS)
-                )
-                .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT)
-                .build());
+    addDrawableChild(ButtonWidget.builder(
+                    Text.literal(state.playing() ? "Stop" : "Start"),
+                    button -> setPlaying(!state.playing())
+            )
+            .dimensions(x + thirdWidth + controlGap, y, thirdWidth, BUTTON_HEIGHT)
+            .build());
 
-        return y + ROW_GAP;
-    }
+    addDrawableChild(ButtonWidget.builder(
+                    Text.literal("+10 Sekunden"),
+                    button -> seek(SEEK_AMOUNT_MS)
+            )
+            .dimensions(
+                    x + 2 * (thirdWidth + controlGap),
+                    y,
+                    BUTTON_WIDTH - 2 * (thirdWidth + controlGap),
+                    BUTTON_HEIGHT
+            )
+            .build());
+
+    return y + ROW_GAP;
+}
 
     private void updateLinkButtons(String value) {
         boolean valid = CinemaBrowserManager.normalizeHttpUrl(value) != null;
