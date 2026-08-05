@@ -20,6 +20,7 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.lwjgl.glfw.GLFW;
@@ -36,6 +37,7 @@ public final class ScreenCreationManager {
 	private static boolean wasUsePressedLastTick = false;
 	private static boolean wasEscPressedLastTick = false;
 	private static BlockPos selectionPos1;
+	private static Direction selectionSide;
 	private static long lastViewEnterAttemptMs = 0L;
 	private static long lastOfflineHintMs = 0L;
 
@@ -397,6 +399,7 @@ public final class ScreenCreationManager {
 		if (selectionPos1 == null) {
 			// ── Erster Klick: Startpunkt markieren ───────────────────────────
 			selectionPos1 = target.toImmutable();
+			selectionSide = hit.getSide();
 			player.sendMessage(
 					Text.translatable("gui.mpsqcamera.auswahl.pos1_gesetzt"), true);
 			MpsqCameraClient.LOGGER.info("[MPSQ Kameras] Pos 1 markiert: {}", selectionPos1);
@@ -404,10 +407,12 @@ public final class ScreenCreationManager {
 			// ── Zweiter Klick: Endpunkt → automatisch bestätigen & Menü öffnen
 			BlockPos pos1 = selectionPos1;
 			BlockPos pos2 = target.toImmutable();
+			Direction side = selectionSide;
 			selectionPos1 = null; // Auswahl-Modus beenden
+			selectionSide = null;
 
 			MpsqCameraClient.LOGGER.info("[MPSQ Kameras] Pos 2 markiert: {} → Erstell-Menü öffnen", pos2);
-			client.setScreen(new BildschirmErstellenScreen(pos1, pos2));
+			client.setScreen(new BildschirmErstellenScreen(pos1, pos2, side));
 		}
 	}
 
