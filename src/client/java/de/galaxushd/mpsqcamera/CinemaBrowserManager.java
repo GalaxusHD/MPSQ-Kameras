@@ -8,6 +8,8 @@ import net.minecraft.util.Identifier;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -140,8 +142,11 @@ public final class CinemaBrowserManager {
             }
             if (videoId != null && !videoId.isBlank()) {
                 long seconds = Math.max(0L, positionMs / 1000L);
-                return "https://www.youtube.com/embed/" + videoId
-                        + "?autoplay=1&mute=1&controls=0&rel=0&start=" + seconds;
+                // YouTube now rejects a top-level off-screen browser without a referrer (error 153).
+                // The public MPSQ player page supplies the required embedding origin.
+                return MpsqApiClient.API_URL + "/player?v="
+                        + URLEncoder.encode(videoId, StandardCharsets.UTF_8)
+                        + "&start=" + seconds;
             }
         } catch (URISyntaxException ignored) {
             // The browser will show the normal error page for an invalid URL.
