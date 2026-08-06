@@ -148,7 +148,8 @@ public final class CinemaBrowserManager {
                 // The static MPSQ player page supplies the required embedding origin.
                 return "https://www.mixelpixel-squidgame.net/mpsq-player.html?v="
                         + URLEncoder.encode(videoId, StandardCharsets.UTF_8)
-                        + "&start=" + seconds;
+                        + "&start=" + seconds
+                        + "&player=2";
             }
         } catch (URISyntaxException ignored) {
             // The browser will show the normal error page for an invalid URL.
