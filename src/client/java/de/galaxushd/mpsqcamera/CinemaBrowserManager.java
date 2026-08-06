@@ -143,8 +143,8 @@ public final class CinemaBrowserManager {
             if (videoId != null && !videoId.isBlank()) {
                 long seconds = Math.max(0L, positionMs / 1000L);
                 // YouTube now rejects a top-level off-screen browser without a referrer (error 153).
-                // The public MPSQ player page supplies the required embedding origin.
-                return MpsqApiClient.API_URL + "/player?v="
+                // The static MPSQ player page supplies the required embedding origin.
+                return "https://mixelpixel-squidgame.net/mpsq-player.html?v="
                         + URLEncoder.encode(videoId, StandardCharsets.UTF_8)
                         + "&start=" + seconds;
             }
