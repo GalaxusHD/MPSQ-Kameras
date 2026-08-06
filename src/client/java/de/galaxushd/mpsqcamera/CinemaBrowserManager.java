@@ -42,6 +42,7 @@ public final class CinemaBrowserManager {
         } catch (RuntimeException exception) {
             MpsqCameraClient.LOGGER.warn("MCEF konnte nicht initialisiert werden; Kino-Bildschirme bleiben offline.", exception);
         }
+        CinemaAudioManager.initialize();
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.world == null) {
                 clear();
@@ -118,6 +119,7 @@ public final class CinemaBrowserManager {
     public static void clear() {
         new HashSet<>(BROWSERS.keySet()).forEach(CinemaBrowserManager::close);
         FAILED_BROWSERS.clear();
+        CinemaAudioManager.clear();
     }
 
     private static void close(UUID screenId) {
@@ -144,7 +146,7 @@ public final class CinemaBrowserManager {
                 long seconds = Math.max(0L, positionMs / 1000L);
                 // YouTube now rejects a top-level off-screen browser without a referrer (error 153).
                 // The static MPSQ player page supplies the required embedding origin.
-                return "https://mixelpixel-squidgame.net/mpsq-player.html?v="
+                return "https://www.mixelpixel-squidgame.net/mpsq-player.html?v="
                         + URLEncoder.encode(videoId, StandardCharsets.UTF_8)
                         + "&start=" + seconds;
             }

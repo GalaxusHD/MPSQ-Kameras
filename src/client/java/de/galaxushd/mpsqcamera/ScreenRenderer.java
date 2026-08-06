@@ -3,6 +3,7 @@ package de.galaxushd.mpsqcamera;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.util.math.MatrixStack;
@@ -365,7 +366,9 @@ public final class ScreenRenderer {
         vertices.vertex(matrices.peek(), (float) x, (float) y, (float) z)
                 .color(255, 255, 255, 255)
                 .texture(u, v)
-                .overlay(0)
+                // A value of 0 selects Minecraft's red damage-overlay pixel.
+                // Browser textures must use the neutral overlay instead.
+                .overlay(OverlayTexture.DEFAULT_UV)
                 .light(0xF000F0)
                 .normal(0.0f, 0.0f, 1.0f);
     }
