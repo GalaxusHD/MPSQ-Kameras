@@ -10,9 +10,6 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 
 public final class ScreenRenderer {
     private static final double RENDER_RANGE = 64.0;
@@ -223,9 +220,9 @@ public final class ScreenRenderer {
             return;
         }
 
-        Vec3d origin = new Vec3d(ax, ay, az);
-        Vec3d horizontal = new Vec3d(bx, by, bz).subtract(origin);
-        Vec3d vertical = new Vec3d(dx, dy, dz).subtract(origin);
+        Vec3d baseOrigin = new Vec3d(ax, ay, az);
+        Vec3d horizontal = new Vec3d(bx, by, bz).subtract(baseOrigin);
+        Vec3d vertical = new Vec3d(dx, dy, dz).subtract(baseOrigin);
 
         double width = horizontal.length();
         double height = vertical.length();
@@ -236,6 +233,8 @@ public final class ScreenRenderer {
 
         horizontal = horizontal.normalize();
         vertical = vertical.normalize();
+        // Keep status pixels slightly in front of the black plane to prevent z-fighting while moving.
+        Vec3d origin = baseOrigin.add(horizontal.crossProduct(vertical).multiply(0.001));
 
         String text = status.label();
         double cellSize = Math.min(width / (text.length() * 4.0 + 1.0), height / 7.0);
@@ -366,47 +365,22 @@ public final class ScreenRenderer {
 
     /** Obtains a texture render layer across the small 1.21.x mapping differences. */
     private static final class MinecraftRenderCompat {
-        private static final Method LAYER_METHOD = findLayerMethod();
         private static boolean warningLogged;
 
         private MinecraftRenderCompat() {
         }
 
         private static VertexConsumer textureVertices(VertexConsumerProvider consumers, Identifier texture) {
-            if (LAYER_METHOD == null) {
-                return null;
-            }
             try {
-                Object layer = LAYER_METHOD.invoke(null, texture);
-                return layer instanceof RenderLayer renderLayer ? consumers.getBuffer(renderLayer) : null;
-            } catch (IllegalAccessException | InvocationTargetException exception) {
+                return consumers.getBuffer(RenderLayer.getEntityCutoutNoCull(texture));
+            } catch (RuntimeException exception) {
                 if (!warningLogged) {
                     warningLogged = true;
-                    MpsqCameraClient.LOGGER.warn("Kino-Render-Layer konnte nicht erstellt werden", exception);
+                    MpsqCameraClient.LOGGER.warn("MCEF-Textur konnte nicht gerendert werden", exception);
                 }
                 return null;
             }
         }
 
-        private static Method findLayerMethod() {
-            for (String className : new String[]{"net.minecraft.client.render.RenderLayers", "net.minecraft.class_12249"}) {
-                try {
-                    Class<?> type = Class.forName(className);
-                    for (Method method : type.getMethods()) {
-                        if (Modifier.isStatic(method.getModifiers())
-                                && method.getParameterCount() == 1
-                                && method.getParameterTypes()[0] == Identifier.class
-                                && RenderLayer.class.isAssignableFrom(method.getReturnType())
-                                && method.getName().toLowerCase().contains("cutout")) {
-                            return method;
-                        }
-                    }
-                } catch (ClassNotFoundException ignored) {
-                    // The next candidate covers a different mapping version.
-                }
-            }
-            MpsqCameraClient.LOGGER.warn("Kein kompatibler Render-Layer fuer Kino-Bildschirme gefunden.");
-            return null;
-        }
     }
 }
