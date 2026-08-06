@@ -112,7 +112,7 @@ public final class BildschirmDetailScreen extends Screen {
                         Text.literal("Zurück zur Liste"),
                         button -> client.setScreen(parent)
                 )
-                .dimensions(width / 2 - 75, height - 36, 150, BUTTON_HEIGHT)
+                .dimensions(width / 2 - 75, height - 28, 150, BUTTON_HEIGHT)
                 .build());
     }
 
@@ -126,7 +126,7 @@ public final class BildschirmDetailScreen extends Screen {
             Text.literal("Video- oder Stream-Link")
     );
     streamUrlField.setMaxLength(2048);
-    streamUrlField.setPlaceholder(Text.literal("https://youtube.com/... oder https://twitch.tv/..."));
+    streamUrlField.setPlaceholder(Text.literal("https://..."));
     streamUrlField.setText(streamUrl);
     addDrawableChild(streamUrlField);
     y += ROW_GAP;
@@ -139,7 +139,7 @@ public final class BildschirmDetailScreen extends Screen {
             .build());
 
     addDrawableChild(ButtonWidget.builder(
-                    Text.literal("Link zurücksetzen"),
+                    Text.literal("Link reset"),
                     button -> resetCinemaLink()
             )
             .dimensions(x + halfWidth + controlGap, y, halfWidth, BUTTON_HEIGHT)
@@ -152,7 +152,7 @@ public final class BildschirmDetailScreen extends Screen {
     CinemaPlaybackStore.PlaybackState state = CinemaPlaybackStore.get(screenId);
 
     addDrawableChild(ButtonWidget.builder(
-                    Text.literal("-10 Sekunden"),
+                    Text.literal("-10 Sek"),
                     button -> seek(-SEEK_AMOUNT_MS)
             )
             .dimensions(x, y, thirdWidth, BUTTON_HEIGHT)
@@ -166,7 +166,7 @@ public final class BildschirmDetailScreen extends Screen {
             .build());
 
     addDrawableChild(ButtonWidget.builder(
-                    Text.literal("+10 Sekunden"),
+                    Text.literal("+10 Sek"),
                     button -> seek(SEEK_AMOUNT_MS)
             )
             .dimensions(

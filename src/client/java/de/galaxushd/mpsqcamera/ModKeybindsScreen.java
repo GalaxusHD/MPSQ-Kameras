@@ -66,7 +66,7 @@ public class ModKeybindsScreen extends Screen {
                     pendingRebind = null;
                     clearAndInit();
                 }
-        ).dimensions(cx - 155, this.height - 36, 150, 20).build());
+        ).dimensions(cx - 155, this.height - 28, 150, 20).build());
 
         // Zurück
         addDrawableChild(ButtonWidget.builder(
@@ -75,7 +75,7 @@ public class ModKeybindsScreen extends Screen {
                     pendingRebind = null;
                     this.client.setScreen(parent);
                 }
-        ).dimensions(cx + 5, this.height - 36, 150, 20).build());
+        ).dimensions(cx + 5, this.height - 28, 150, 20).build());
     }
 
     @Override

@@ -153,6 +153,9 @@ public final class ScreenRenderer {
             quad(matrices, vertices, ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz, 0, 0, 0, 235);
             drawStatusText(matrices, vertices, status, ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz);
         } else {
+            // MCEF textures may contain transparent pixels while a video frame is being
+            // updated. Draw black first, so those pixels do not reveal a coloured buffer.
+            quad(matrices, vertices, ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz, 0, 0, 0, 255);
             VertexConsumer textureVertices = MinecraftRenderCompat.textureVertices(consumers, browserTexture);
             if (textureVertices == null) {
                 quad(matrices, vertices, ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz, 0, 0, 0, 235);
@@ -379,7 +382,7 @@ public final class ScreenRenderer {
 
         private static VertexConsumer textureVertices(VertexConsumerProvider consumers, Identifier texture) {
             try {
-                return consumers.getBuffer(RenderLayer.getEntityCutoutNoCull(texture));
+                return consumers.getBuffer(RenderLayer.getEntityTranslucentEmissive(texture));
             } catch (RuntimeException exception) {
                 if (!warningLogged) {
                     warningLogged = true;

@@ -11,6 +11,8 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 
+import java.util.Locale;
+
 public class BildschirmErstellenScreen extends Screen {
     private final BlockPos pos1;
     private final BlockPos pos2;
@@ -22,6 +24,7 @@ public class BildschirmErstellenScreen extends Screen {
     private CyclingButtonWidget<LocalScreenStore.ScreenInputType> modusButton;
     private TextFieldWidget urlField;
     private ButtonWidget kameraButton;
+    private ButtonWidget createButton;
 
     public BildschirmErstellenScreen(BlockPos pos1, BlockPos pos2, Direction clickedSide) {
         super(Text.translatable("gui.mpsqcamera.erstellen.titel"));
@@ -41,6 +44,7 @@ public class BildschirmErstellenScreen extends Screen {
         nameField = new TextFieldWidget(textRenderer, centerX - fieldWidth / 2, y, fieldWidth, 20, Text.translatable("gui.mpsqcamera.erstellen.name"));
         nameField.setPlaceholder(Text.translatable("gui.mpsqcamera.erstellen.name.hinweis"));
         nameField.setMaxLength(64);
+        nameField.setChangedListener(ignored -> updateCreateButton());
         addDrawableChild(nameField);
         y += 28;
         addDrawableChild(CyclingButtonWidget.builder(Ausrichtung::getLabel).values(Ausrichtung.values()).initially(Ausrichtung.NORD)
@@ -58,11 +62,12 @@ public class BildschirmErstellenScreen extends Screen {
         kameraButton = addDrawableChild(ButtonWidget.builder(Text.literal("Kamera: Keine"), button -> { })
                 .dimensions(centerX - fieldWidth / 2, y, fieldWidth, 20).build());
         y += 32;
-        addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.erstellen.erstellen"), button -> createScreen())
+        createButton = addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.erstellen.erstellen"), button -> createScreen())
                 .dimensions(centerX - fieldWidth / 2, y, 106, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.erstellen.abbrechen"), button -> close())
                 .dimensions(centerX + 4, y, 106, 20).build());
         updateMode(LocalScreenStore.ScreenInputType.LINK);
+        updateCreateButton();
     }
 
     private void updateMode(LocalScreenStore.ScreenInputType mode) {
@@ -76,7 +81,15 @@ public class BildschirmErstellenScreen extends Screen {
     private void createScreen() {
         if (client == null || client.player == null || client.world == null) return;
         String name = nameField.getText().trim();
-        if (name.isBlank()) name = "Bildschirm";
+        if (name.isBlank()) {
+            updateCreateButton();
+            return;
+        }
+        if (screenNameExists(name)) {
+            showStatus("Dieser Bildschirmname ist bereits vergeben.");
+            updateCreateButton();
+            return;
+        }
         LocalScreenStore.ScreenInputType mode = modusButton.getValue();
         String url = mode == LocalScreenStore.ScreenInputType.LINK ? urlField.getText().trim() : "";
         Vec3d createdFrom = client.player.getPos();
@@ -95,6 +108,25 @@ public class BildschirmErstellenScreen extends Screen {
             return null;
         });
         close();
+    }
+
+    private void updateCreateButton() {
+        if (createButton == null || nameField == null) return;
+        String name = nameField.getText().trim();
+        createButton.active = !name.isBlank() && !screenNameExists(name);
+    }
+
+    private static boolean screenNameExists(String name) {
+        return LocalScreenStore.getAllScreens().stream()
+                .map(LocalScreenStore.LocalScreenData::name)
+                .filter(existing -> existing != null)
+                .anyMatch(existing -> existing.trim().equalsIgnoreCase(name.trim()));
+    }
+
+    private void showStatus(String message) {
+        if (client != null && client.player != null) {
+            client.player.sendMessage(Text.literal(message), true);
+        }
     }
 
     private static JsonObject position(BlockPos pos) {

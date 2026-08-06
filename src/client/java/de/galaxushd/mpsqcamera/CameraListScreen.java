@@ -22,7 +22,7 @@ public final class CameraListScreen extends Screen {
     @Override
     protected void init() {
         addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.back"), button -> client.setScreen(parent))
-                .dimensions(width / 2 - 75, height - 36, 150, 20).build());
+                .dimensions(width / 2 - 75, height - 28, 150, 20).build());
         clampScroll();
     }
 

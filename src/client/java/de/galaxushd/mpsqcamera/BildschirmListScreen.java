@@ -34,7 +34,7 @@ public class BildschirmListScreen extends Screen {
     protected void init() {
         loadJoinedScreens();
         addDrawableChild(ButtonWidget.builder(Text.literal("Zurück"), button -> client.setScreen(parent))
-                .dimensions(width / 2 - 75, height - 36, 150, 20).build());
+                .dimensions(width / 2 - 75, height - 28, 150, 20).build());
     }
 
     @Override

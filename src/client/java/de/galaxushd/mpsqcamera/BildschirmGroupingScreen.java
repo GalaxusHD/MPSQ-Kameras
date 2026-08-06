@@ -33,7 +33,7 @@ public class BildschirmGroupingScreen extends Screen {
         addDrawableChild(ButtonWidget.builder(
                 Text.literal("Zurück"),
                 b -> this.client.setScreen(parent)
-        ).dimensions(this.width / 2 - 75, this.height - 36, 150, 20).build());
+        ).dimensions(this.width / 2 - 75, this.height - 28, 150, 20).build());
     }
 
     @Override

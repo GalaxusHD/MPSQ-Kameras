@@ -14,7 +14,7 @@ public final class CameraAssignmentScreen extends Screen {
     private final UUID screenId;
     private int scroll;
     public CameraAssignmentScreen(Screen parent, UUID screenId) { super(Text.literal("Kamera auswählen")); this.parent = parent; this.screenId = screenId; }
-    @Override protected void init() { addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.back"), b -> client.setScreen(parent)).dimensions(width / 2 - 75, height - 36, 150, 20).build()); }
+    @Override protected void init() { addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.back"), b -> client.setScreen(parent)).dimensions(width / 2 - 75, height - 28, 150, 20).build()); }
     @Override public void renderBackground(DrawContext c, int x, int y, float d) { super.renderBackground(c, x, y, d); MpsqTheme.drawBackground(c, width, height); }
     @Override public void render(DrawContext c, int x, int y, float d) {
         super.render(c, x, y, d); int cx=width/2, row=58-scroll; c.drawCenteredTextWithShadow(textRenderer,title,cx,28,MpsqTheme.TEXT_TITEL);

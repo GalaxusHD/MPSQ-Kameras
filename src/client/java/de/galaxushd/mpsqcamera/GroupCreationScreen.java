@@ -36,7 +36,7 @@ public class GroupCreationScreen extends Screen {
     @Override
     protected void init() {
         int cx = this.width / 2;
-        int bottomY = this.height - 36;
+        int bottomY = this.height - 28;
 
         // Gruppe erstellen
         addDrawableChild(ButtonWidget.builder(
