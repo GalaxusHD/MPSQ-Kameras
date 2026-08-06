@@ -40,7 +40,7 @@ public final class MpsqApiClient {
         if (token != null && !token.isBlank()) {
             JsonObject body = new JsonObject();
             body.addProperty("displayName", displayName);
-            return request("PATCH", "/me", body, true).thenApply(ignored -> null)
+            return request("PATCH", "/me", body, true).thenApply(ignored -> (Void) null)
                     .exceptionally(ignored -> null);
         }
         JsonObject body = new JsonObject();
