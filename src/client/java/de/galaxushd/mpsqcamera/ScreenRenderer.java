@@ -177,6 +177,13 @@ public final class ScreenRenderer {
 
         Vec3d horizontalBorder = horizontal.normalize().multiply(FRAME_THICKNESS);
         Vec3d verticalBorder = vertical.normalize().multiply(FRAME_THICKNESS);
+        // Keep the frame in front of the black surface. Otherwise the depth buffer
+        // alternates between both coplanar quads while the camera is moving.
+        Vec3d frameOffset = horizontal.crossProduct(vertical).normalize().multiply(0.0015);
+        bottomLeft = bottomLeft.add(frameOffset);
+        bottomRight = bottomRight.add(frameOffset);
+        topRight = topRight.add(frameOffset);
+        topLeft = topLeft.add(frameOffset);
 
         coloredQuad(matrices, vertices,
                 bottomLeft,
