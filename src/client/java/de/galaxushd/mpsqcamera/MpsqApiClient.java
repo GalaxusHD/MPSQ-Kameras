@@ -6,6 +6,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 
@@ -35,9 +36,15 @@ public final class MpsqApiClient {
 
     public static CompletableFuture<Void> initialize() {
         token = readToken();
-        if (token != null && !token.isBlank()) return CompletableFuture.completedFuture(null);
+        String displayName = currentDisplayName();
+        if (token != null && !token.isBlank()) {
+            JsonObject body = new JsonObject();
+            body.addProperty("displayName", displayName);
+            return request("PATCH", "/me", body, true).thenApply(ignored -> null)
+                    .exceptionally(ignored -> null);
+        }
         JsonObject body = new JsonObject();
-        body.addProperty("displayName", "Minecraft Client");
+        body.addProperty("displayName", displayName);
         return request("POST", "/register", body, false).thenAccept(json -> {
             token = json.getAsJsonObject().get("token").getAsString();
             try {
@@ -123,5 +130,13 @@ public final class MpsqApiClient {
     private static String readToken() {
         try { return Files.exists(TOKEN_FILE) ? Files.readString(TOKEN_FILE, StandardCharsets.UTF_8).trim() : null; }
         catch (IOException exception) { MpsqCameraClient.LOGGER.warn("MPSQ-Zugang konnte nicht gelesen werden", exception); return null; }
+    }
+
+    private static String currentDisplayName() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client != null && client.getSession() != null && !client.getSession().getUsername().isBlank()) {
+            return client.getSession().getUsername();
+        }
+        return "Minecraft Client";
     }
 }

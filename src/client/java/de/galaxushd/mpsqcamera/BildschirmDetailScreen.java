@@ -73,6 +73,14 @@ public final class BildschirmDetailScreen extends Screen {
             y += ROW_GAP;
 
             addDrawableChild(ButtonWidget.builder(
+                            Text.literal("Berechtigungen..."),
+                            button -> client.setScreen(new BildschirmPermissionsScreen(this, screenId, activationCode))
+                    )
+                    .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT)
+                    .build());
+            y += ROW_GAP;
+
+            addDrawableChild(ButtonWidget.builder(
                             Text.literal("Gruppieren..."),
                             button -> client.setScreen(new BildschirmGroupingScreen(this))
                     )
