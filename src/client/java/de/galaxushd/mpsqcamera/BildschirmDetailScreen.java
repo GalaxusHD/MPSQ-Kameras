@@ -7,6 +7,7 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 
 import java.util.UUID;
 
@@ -14,6 +15,8 @@ public final class BildschirmDetailScreen extends Screen {
     private static final int BUTTON_WIDTH = 180;
     private static final int BUTTON_HEIGHT = 20;
     private static final int ROW_GAP = 26;
+    private static final int CONTENT_TOP = 54;
+    private static final int CONTENT_BOTTOM = 56;
     private static final long SEEK_AMOUNT_MS = 10_000L;
 
     private final Screen parent;
@@ -23,9 +26,12 @@ public final class BildschirmDetailScreen extends Screen {
     private boolean cameraMode;
     private String activationCode = "------";
     private String streamUrl = "";
+    private boolean preserveUnsavedStreamUrl;
 
     private TextFieldWidget streamUrlField;
     private ButtonWidget saveLinkButton;
+    private int scrollOffset;
+    private int maxScrollOffset;
 
     public BildschirmDetailScreen(Screen parent, String screenId, String name, boolean isCreator) {
         super(Text.literal(name));
@@ -37,11 +43,13 @@ public final class BildschirmDetailScreen extends Screen {
 
     @Override
     protected void init() {
-        loadCachedScreenData();
+        if (!preserveUnsavedStreamUrl) {
+            loadCachedScreenData();
+        }
         activationCode = ScreenAccessStore.code(screenId);
 
         int x = width / 2 - BUTTON_WIDTH / 2;
-        int y = 54;
+        int y = CONTENT_TOP - scrollOffset;
 
         if (isCreator) {
             addDrawableChild(ButtonWidget.builder(
@@ -99,11 +107,12 @@ public final class BildschirmDetailScreen extends Screen {
             }
 
             addDrawableChild(ButtonWidget.builder(
-                            Text.literal("Bildschirm löschen"),
+                            Text.literal("Bildschirm löschen").formatted(Formatting.RED),
                             button -> confirmDelete()
                     )
                     .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT)
                     .build());
+            y += ROW_GAP;
         } else if (!cameraMode) {
             CinemaPlaybackStore.PlaybackState state = CinemaPlaybackStore.get(screenId);
 
@@ -114,7 +123,11 @@ public final class BildschirmDetailScreen extends Screen {
                     )
                     .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT)
                     .build());
+            y += ROW_GAP;
         }
+
+        maxScrollOffset = Math.max(0, y - (height - CONTENT_BOTTOM));
+        scrollOffset = Math.min(scrollOffset, maxScrollOffset);
 
         addDrawableChild(ButtonWidget.builder(
                         Text.literal("Zurück zur Liste"),
@@ -244,6 +257,8 @@ public final class BildschirmDetailScreen extends Screen {
         JsonObject body = new JsonObject();
         body.addProperty("mode", "KINO");
         body.addProperty("cinemaUrl", url);
+        streamUrl = url;
+        preserveUnsavedStreamUrl = false;
 
         saveScreenPatch(body, "Link gespeichert.");
     }
@@ -252,6 +267,8 @@ public final class BildschirmDetailScreen extends Screen {
         JsonObject body = new JsonObject();
         body.addProperty("cinemaUrl", "");
         body.add("playbackState", playbackJson(false, 0L));
+        streamUrl = "";
+        preserveUnsavedStreamUrl = false;
 
         saveScreenPatch(body, "Link zurückgesetzt.");
     }
@@ -407,5 +424,26 @@ public final class BildschirmDetailScreen extends Screen {
     @Override
     public boolean shouldPause() {
         return false;
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (maxScrollOffset <= 0) {
+            return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
+        }
+
+        if (streamUrlField != null) {
+            streamUrl = streamUrlField.getText();
+            preserveUnsavedStreamUrl = true;
+        }
+
+        int previousOffset = scrollOffset;
+        scrollOffset = Math.max(0, Math.min(maxScrollOffset,
+                scrollOffset - (int) (verticalAmount * ROW_GAP)));
+
+        if (scrollOffset != previousOffset) {
+            clearAndInit();
+        }
+        return true;
     }
 }
