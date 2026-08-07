@@ -60,13 +60,18 @@ public final class ScreenRenderer {
             double y2 = Math.max(first.getY(), second.getY()) + 1.0;
             double z2 = Math.max(first.getZ(), second.getZ()) + 1.0;
 
+            CinemaBrowserManager.ScreenStatus screenStatus = screen.inputType() == LocalScreenStore.ScreenInputType.CAMERA
+                    && !ScreenCameraStore.hasCameras(screen.id())
+                    ? CinemaBrowserManager.ScreenStatus.OFFLINE
+                    : CinemaBrowserManager.status(screen);
+
             drawScreenFace(
                     matrices,
                     consumers,
                     vertices,
                     ScreenAccessStore.front(screen.id()),
                     CinemaBrowserManager.texture(screen.id()),
-                    CinemaBrowserManager.status(screen),
+                    screenStatus,
                     x1, y1, z1,
                     x2, y2, z2
             );

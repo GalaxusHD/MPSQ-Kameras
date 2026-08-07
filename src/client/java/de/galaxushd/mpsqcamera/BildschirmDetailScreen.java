@@ -60,6 +60,14 @@ public final class BildschirmDetailScreen extends Screen {
                     .build());
             y += ROW_GAP;
 
+            addDrawableChild(ButtonWidget.builder(
+                            Text.literal("Umbenennen..."),
+                            button -> client.setScreen(new BildschirmNameScreen(this, screenId, title.getString()))
+                    )
+                    .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT)
+                    .build());
+            y += ROW_GAP;
+
             if (cameraMode) {
                 addDrawableChild(ButtonWidget.builder(
                                 Text.literal("Kameras verwalten..."),
