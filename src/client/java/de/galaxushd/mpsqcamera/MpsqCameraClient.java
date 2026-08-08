@@ -18,14 +18,8 @@ public class MpsqCameraClient implements ClientModInitializer {
         SelectionRenderer.initialize();
         ScreenRenderer.initialize();
         CinemaBrowserManager.initialize();
-        MpsqApiClient.initialize().thenCompose(ignored ->
-                MpsqApiClient.loadCameras().thenAccept(cameras -> {
-                    MinecraftClient.getInstance().execute(() -> {
-                        LocalCameraStore.replaceAll(cameras);
-                        cameras.forEach(CameraHologramManager::show);
-                    });
-                })
-        ).thenCompose(ignored -> ScreenSyncManager.refresh()).exceptionally(error -> {
+        MpsqApiClient.initialize().thenCompose(ignored -> MpsqApiClient.refreshCameras())
+        .thenCompose(ignored -> ScreenSyncManager.refresh()).exceptionally(error -> {
             LOGGER.warn("MPSQ-API ist momentan nicht erreichbar", error);
             return null;
         });

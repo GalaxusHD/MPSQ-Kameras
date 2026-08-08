@@ -83,6 +83,15 @@ public final class MpsqApiClient {
         });
     }
 
+    /** Refreshes the local camera cache and its client-only holograms from the shared API. */
+    public static CompletableFuture<Void> refreshCameras() {
+        return loadCameras().thenAccept(cameras -> MinecraftClient.getInstance().execute(() -> {
+            LocalCameraStore.getAll().forEach(camera -> CameraHologramManager.remove(camera.id()));
+            LocalCameraStore.replaceAll(cameras);
+            cameras.forEach(CameraHologramManager::show);
+        }));
+    }
+
     public static CompletableFuture<List<LocalScreenStore.LocalScreenData>> loadScreens() {
         return get("/screens").thenApply(json -> {
             List<LocalScreenStore.LocalScreenData> screens = new ArrayList<>();

@@ -26,20 +26,28 @@ public final class CameraCreationManager {
     private static void tick(MinecraftClient client) {
         while (createCameraKey.wasPressed()) {
             if (client.player == null || client.world == null || client.currentScreen != null) return;
-            Vec3d position = client.player.getCameraPosVec(1.0F).add(client.player.getRotationVec(1.0F).multiply(0.65));
-            String name = "Kamera " + (LocalCameraStore.getAll().size() + 1);
-            LocalCameraStore.CameraData local = LocalCameraStore.createStatic(name, client.world.getRegistryKey().getValue().toString(), position, client.player.getYaw(), client.player.getPitch());
-            CameraHologramManager.show(local);
-            publish(local);
-            client.player.sendMessage(Text.translatable("status.mpsqcamera.camera_created"), true);
+            client.setScreen(new CameraCreateScreen());
         }
     }
 
-    private static void publish(LocalCameraStore.CameraData camera) {
+    static void createNamedCamera(MinecraftClient client, String name) {
+        if (client.player == null || client.world == null) return;
+        Vec3d position = client.player.getCameraPosVec(1.0F).add(client.player.getRotationVec(1.0F).multiply(0.65));
         JsonObject body = new JsonObject();
-        body.addProperty("name", camera.name()); body.addProperty("kind", "STATIC"); body.addProperty("dimension", camera.dimension());
-        body.addProperty("x", camera.position().x); body.addProperty("y", camera.position().y); body.addProperty("z", camera.position().z);
-        body.addProperty("yaw", camera.yaw()); body.addProperty("pitch", camera.pitch());
-        MpsqApiClient.post("/cameras", body).exceptionally(error -> { MpsqCameraClient.LOGGER.warn("Kamera konnte nicht synchronisiert werden", error); return null; });
+        body.addProperty("name", name.trim()); body.addProperty("kind", "STATIC");
+        body.addProperty("dimension", client.world.getRegistryKey().getValue().toString());
+        body.addProperty("x", position.x); body.addProperty("y", position.y); body.addProperty("z", position.z);
+        body.addProperty("yaw", client.player.getYaw()); body.addProperty("pitch", client.player.getPitch());
+        MpsqApiClient.post("/cameras", body)
+                .thenCompose(ignored -> MpsqApiClient.refreshCameras())
+                .whenComplete((ignored, error) -> client.execute(() -> {
+                    if (client.player == null) return;
+                    if (error != null) {
+                        MpsqCameraClient.LOGGER.warn("Kamera konnte nicht synchronisiert werden", error);
+                        client.player.sendMessage(Text.literal("Kamera konnte nicht gespeichert werden."), true);
+                    } else {
+                        client.player.sendMessage(Text.translatable("status.mpsqcamera.camera_created"), true);
+                    }
+                }));
     }
 }
