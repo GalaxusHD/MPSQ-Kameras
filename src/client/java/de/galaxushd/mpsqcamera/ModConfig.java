@@ -8,8 +8,8 @@ public final class ModConfig {
 
     private ModConfig() {}
 
-    /** Item-ID des Erstellungs-Werkzeugs (Standard: minecraft:blaze_rod). */
-    public static String toolItemId = "minecraft:blaze_rod";
+    /** Item-ID des Erstellungs-Werkzeugs (Standard: minecraft:ink_sac). */
+    public static String toolItemId = "minecraft:ink_sac";
 
     /** Globale Wiedergabe-Lautstärke (0.0 – 1.0). */
     public static float volume = 1.0f;

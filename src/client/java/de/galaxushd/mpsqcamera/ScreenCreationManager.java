@@ -452,7 +452,7 @@ public final class ScreenCreationManager {
 		if (identifier != null && Registries.ITEM.containsId(identifier)) {
 			return Registries.ITEM.get(identifier);
 		}
-		return Items.BLAZE_ROD;
+		return Items.INK_SAC;
 	}
 
 	private record ViewSession(

@@ -82,7 +82,8 @@ public final class BildschirmPermissionsScreen extends Screen {
                 .whenComplete((response, error) -> client.execute(() -> {
                     members.clear();
                     if (error != null) {
-                        status = "Berechtigungen konnten nicht geladen werden.";
+                        Throwable cause = error.getCause() == null ? error : error.getCause();
+                        status = "Berechtigungen: " + (cause.getMessage() == null ? "Serverfehler" : cause.getMessage());
                     } else {
                         readMembers(response);
                         status = members.isEmpty() ? "Noch keine weiteren Spieler berechtigt." : "";
@@ -118,7 +119,8 @@ public final class BildschirmPermissionsScreen extends Screen {
         MpsqApiClient.post("/screens/" + screenId + "/members", body)
                 .whenComplete((ignored, error) -> client.execute(() -> {
                     if (error != null) {
-                        status = "Spieler nicht gefunden oder konnte nicht freigegeben werden.";
+                        Throwable cause = error.getCause() == null ? error : error.getCause();
+                        status = "Freigabe fehlgeschlagen: " + (cause.getMessage() == null ? "Spieler nicht gefunden" : cause.getMessage());
                         grantButton.active = !playerNameField.getText().trim().isEmpty();
                     } else {
                         status = playerName + " wurde freigegeben.";

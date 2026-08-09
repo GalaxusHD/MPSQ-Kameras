@@ -44,7 +44,7 @@ public class ModSettingsScreen extends Screen {
         addDrawableChild(ButtonWidget.builder(
                 Text.translatable("gui.mpsqcamera.einstellungen.item_reset"),
                 b -> {
-                    ModConfig.toolItemId = "minecraft:blaze_rod";
+                    ModConfig.toolItemId = "minecraft:ink_sac";
                     itemField.setText(ModConfig.toolItemId);
                 }
         ).dimensions(cx - btnW / 2 + fieldW + 4, y, 52, 20).build());

@@ -131,11 +131,11 @@ public final class CinemaAudioManager {
             try {
                 if (sourceId == 0) {
                     sourceId = AL10.alGenSources();
-                    AL10.alSourcef(sourceId, AL10.AL_GAIN, 1.0f);
+                    AL10.alSourcef(sourceId, AL10.AL_GAIN, Math.max(0.0f, Math.min(1.0f, ModConfig.volume)));
                     AL10.alSourcei(sourceId, AL10.AL_SOURCE_RELATIVE, AL10.AL_TRUE);
                 }
 
-                int processed = AL10.alGetSourcei(sourceId, AL10.AL_BUFFERS_PROCESSED);
+            int processed = AL10.alGetSourcei(sourceId, AL10.AL_BUFFERS_PROCESSED);
                 while (processed-- > 0) {
                     AL10.alDeleteBuffers(AL10.alSourceUnqueueBuffers(sourceId));
                 }
@@ -158,6 +158,9 @@ public final class CinemaAudioManager {
                 MpsqCameraClient.LOGGER.warn("Kino-Audio konnte nicht ausgegeben werden", exception);
                 close();
             }
+
+                // Keep the mod slider effective after the source was created.
+                AL10.alSourcef(sourceId, AL10.AL_GAIN, Math.max(0.0f, Math.min(1.0f, ModConfig.volume)));
         }
 
         private void close() {

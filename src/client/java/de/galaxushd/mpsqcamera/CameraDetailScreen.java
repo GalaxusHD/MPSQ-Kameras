@@ -109,7 +109,8 @@ public final class CameraDetailScreen extends Screen {
                 .thenCompose(ignored -> MpsqApiClient.refreshCameras())
                 .whenComplete((ignored, error) -> client.execute(() -> {
                     if (error != null) {
-                        status = "Änderung konnte nicht gespeichert werden.";
+                        Throwable cause = error.getCause() == null ? error : error.getCause();
+                        status = "Nicht gespeichert: " + (cause.getMessage() == null ? "Serverfehler" : cause.getMessage());
                         updateSaveButton();
                     } else {
                         status = success;
