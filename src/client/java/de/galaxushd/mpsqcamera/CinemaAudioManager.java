@@ -18,9 +18,11 @@ import java.util.concurrent.atomic.AtomicReference;
 /** Bridges MCEF's float PCM callback to Minecraft's already-active OpenAL device. */
 public final class CinemaAudioManager {
     /* A larger queue absorbs short render/tick stalls without audible gaps. */
-    private static final int MAX_PENDING_PACKETS = 96;
-    private static final int MAX_QUEUED_BUFFERS = 24;
-    private static final int FALLBACK_SAMPLE_RATE = 48_000;
+    private static final int MAX_PENDING_PACKETS = 256;
+    private static final int MAX_QUEUED_BUFFERS = 48;
+    // Chromium's YouTube path sends 44.1 kHz PCM on the MCEF build that
+    // reports params=null. Playing that at 48 kHz makes voices too high.
+    private static final int FALLBACK_SAMPLE_RATE = 44_100;
     private static final Map<CefBrowser, AudioStream> STREAMS = new ConcurrentHashMap<>();
     /* Some MCEF/JCEF builds call audio callbacks without the browser or parameters. */
     private static final AtomicReference<AudioStream> FALLBACK_STREAM = new AtomicReference<>();
