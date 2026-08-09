@@ -111,7 +111,8 @@ public final class CameraDetailScreen extends Screen {
                     if (error != null) {
                         Throwable cause = error.getCause() == null ? error : error.getCause();
                         status = "Nicht gespeichert: " + (cause.getMessage() == null ? "Serverfehler" : cause.getMessage());
-                        updateSaveButton();
+                        // Do not call updateSaveButton here: it would clear the useful server error.
+                        saveButton.active = true;
                     } else {
                         status = success;
                         clearAndInit();
