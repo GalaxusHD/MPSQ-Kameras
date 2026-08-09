@@ -17,8 +17,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** Bridges MCEF's float PCM callback to Minecraft's already-active OpenAL device. */
 public final class CinemaAudioManager {
-    private static final int MAX_PENDING_PACKETS = 12;
-    private static final int MAX_QUEUED_BUFFERS = 6;
+    /* A larger queue absorbs short render/tick stalls without audible gaps. */
+    private static final int MAX_PENDING_PACKETS = 96;
+    private static final int MAX_QUEUED_BUFFERS = 24;
     private static final int FALLBACK_SAMPLE_RATE = 48_000;
     private static final Map<CefBrowser, AudioStream> STREAMS = new ConcurrentHashMap<>();
     /* Some MCEF/JCEF builds call audio callbacks without the browser or parameters. */
@@ -49,6 +50,11 @@ public final class CinemaAudioManager {
         STREAMS.clear();
         AudioStream fallback = FALLBACK_STREAM.getAndSet(null);
         if (fallback != null) fallback.close();
+    }
+
+    /** Stops all MCEF audio immediately. Required for MCEF builds whose callback has no browser identity. */
+    public static void stopAll() {
+        clear();
     }
 
     private static void tick() {

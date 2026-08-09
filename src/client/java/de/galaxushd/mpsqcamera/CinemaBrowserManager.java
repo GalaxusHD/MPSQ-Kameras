@@ -125,6 +125,10 @@ public final class CinemaBrowserManager {
     private static void close(UUID screenId) {
         BrowserSession session = BROWSERS.remove(screenId);
         if (session != null) session.browser().close();
+        // Some MCEF versions report browser=null in their audio callbacks, so we
+        // cannot associate a stream with a screen. Once the last cinema browser
+        // has closed, force-close the fallback source as well.
+        if (BROWSERS.isEmpty()) CinemaAudioManager.stopAll();
     }
 
     /** Converts common YouTube links to their player URL, including a synchronized start point. */
