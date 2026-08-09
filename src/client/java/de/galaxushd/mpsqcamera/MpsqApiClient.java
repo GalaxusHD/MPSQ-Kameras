@@ -130,6 +130,7 @@ public final class MpsqApiClient {
             JsonElement json = JsonParser.parseString(response.body());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 String message = json.isJsonObject() && json.getAsJsonObject().has("error") ? json.getAsJsonObject().get("error").getAsString() : response.body();
+                MpsqCameraClient.LOGGER.warn("MPSQ-API {} {} fehlgeschlagen ({}): {}", method, path, response.statusCode(), message);
                 throw new IllegalStateException(message);
             }
             return json;

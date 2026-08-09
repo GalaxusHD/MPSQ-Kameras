@@ -13,12 +13,16 @@ import java.nio.ByteOrder;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicReference;
 
 /** Bridges MCEF's float PCM callback to Minecraft's already-active OpenAL device. */
 public final class CinemaAudioManager {
     private static final int MAX_PENDING_PACKETS = 12;
     private static final int MAX_QUEUED_BUFFERS = 6;
+    private static final int FALLBACK_SAMPLE_RATE = 48_000;
     private static final Map<CefBrowser, AudioStream> STREAMS = new ConcurrentHashMap<>();
+    /* Some MCEF/JCEF builds call audio callbacks without the browser or parameters. */
+    private static final AtomicReference<AudioStream> FALLBACK_STREAM = new AtomicReference<>();
     private static boolean initialized;
 
     private CinemaAudioManager() {
@@ -43,6 +47,8 @@ public final class CinemaAudioManager {
             stream.close();
         }
         STREAMS.clear();
+        AudioStream fallback = FALLBACK_STREAM.getAndSet(null);
+        if (fallback != null) fallback.close();
     }
 
     private static void tick() {
@@ -59,7 +65,14 @@ public final class CinemaAudioManager {
 
         @Override
         public void onAudioStreamStarted(CefBrowser browser, CefAudioParameters params, int channels) {
-            AudioStream previous = STREAMS.put(browser, new AudioStream(params.sampleRate, channels));
+            int sampleRate = params == null ? FALLBACK_SAMPLE_RATE : params.sampleRate;
+            AudioStream next = new AudioStream(sampleRate, channels);
+            if (browser == null) {
+                AudioStream previous = FALLBACK_STREAM.getAndSet(next);
+                if (previous != null) previous.close();
+                return;
+            }
+            AudioStream previous = STREAMS.put(browser, next);
             if (previous != null) {
                 previous.close();
             }
@@ -67,7 +80,7 @@ public final class CinemaAudioManager {
 
         @Override
         public void onAudioStreamPacket(CefBrowser browser, DataPointer data, int frames, long pts) {
-            AudioStream stream = STREAMS.get(browser);
+            AudioStream stream = browser == null ? FALLBACK_STREAM.get() : STREAMS.get(browser);
             if (stream != null) {
                 stream.accept(data, frames);
             }
@@ -75,7 +88,7 @@ public final class CinemaAudioManager {
 
         @Override
         public void onAudioStreamStopped(CefBrowser browser) {
-            AudioStream stream = STREAMS.remove(browser);
+            AudioStream stream = browser == null ? FALLBACK_STREAM.getAndSet(null) : STREAMS.remove(browser);
             if (stream != null) {
                 stream.close();
             }
