@@ -57,9 +57,7 @@ public final class CameraHologramManager {
         stand.setPosition(camera.position().x, camera.position().y - 1.55, camera.position().z);
         stand.setYaw(camera.yaw());
         stand.setPitch(camera.pitch());
-        // Body yaw is the world direction. Giving the head the same yaw again
-        // rotates it a second time and makes the marker point the wrong way.
-        stand.setHeadRotation(new EulerAngle(camera.pitch(), 0.0F, 0.0F));
+        stand.setHeadRotation(new EulerAngle(camera.pitch(), camera.yaw(), 0.0F));
     }
 
     public static void remove(UUID cameraId) {
