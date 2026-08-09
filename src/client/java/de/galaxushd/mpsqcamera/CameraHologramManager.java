@@ -9,6 +9,7 @@ import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.ProfileComponent;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.decoration.ArmorStandEntity;
+import net.minecraft.util.math.EulerAngle;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 
@@ -38,10 +39,25 @@ public final class CameraHologramManager {
         stand.setId(nextEntityId++);
         stand.setInvisible(true);
         stand.setNoGravity(true);
-        stand.setYaw(camera.yaw());
+        applyTransform(stand, camera);
         stand.equipStack(EquipmentSlot.HEAD, createCameraHead());
         client.world.addEntity(stand);
         HOLOGRAMS.put(camera.id(), stand);
+    }
+
+    /** Applies a saved move/rotation immediately to an already visible client-only hologram. */
+    public static void update(LocalCameraStore.CameraData camera) {
+        ArmorStandEntity stand = HOLOGRAMS.get(camera.id());
+        if (stand == null) { show(camera); return; }
+        if (camera.position() == null) { remove(camera.id()); return; }
+        applyTransform(stand, camera);
+    }
+
+    private static void applyTransform(ArmorStandEntity stand, LocalCameraStore.CameraData camera) {
+        stand.setPosition(camera.position().x, camera.position().y - 1.55, camera.position().z);
+        stand.setYaw(camera.yaw());
+        stand.setPitch(camera.pitch());
+        stand.setHeadRotation(new EulerAngle(camera.pitch(), camera.yaw(), 0.0F));
     }
 
     public static void remove(UUID cameraId) {
