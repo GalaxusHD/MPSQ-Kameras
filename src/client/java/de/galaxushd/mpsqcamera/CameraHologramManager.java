@@ -57,7 +57,10 @@ public final class CameraHologramManager {
         stand.setPosition(camera.position().x, camera.position().y - 1.55, camera.position().z);
         stand.setYaw(camera.yaw());
         stand.setPitch(camera.pitch());
-        stand.setHeadRotation(new EulerAngle(camera.pitch(), camera.yaw(), 0.0F));
+        // The armor stand already owns the horizontal direction through setYaw.
+        // Applying the same yaw a second time to its head rotates the camera
+        // marker twice (most visible when it faces along the Z axis).
+        stand.setHeadRotation(new EulerAngle(camera.pitch(), 0.0F, 0.0F));
     }
 
     public static void remove(UUID cameraId) {

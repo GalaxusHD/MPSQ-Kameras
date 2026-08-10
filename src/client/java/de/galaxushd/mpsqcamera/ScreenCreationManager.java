@@ -190,8 +190,12 @@ public final class ScreenCreationManager {
 		ArmorStandEntity cameraEntity = new ArmorStandEntity(client.world, cameraPos.x, cameraPos.y, cameraPos.z);
 		cameraEntity.setNoGravity(true);
 		cameraEntity.setInvisible(true);
-		cameraEntity.setYaw(player.getYaw());
-		cameraEntity.setPitch(player.getPitch());
+        // Enter a camera from its saved viewing direction. The player can
+        // still look around after entering the anchored view mode.
+        player.setYaw(cameraScreen.yaw());
+        player.setPitch(cameraScreen.pitch());
+        cameraEntity.setYaw(cameraScreen.yaw());
+        cameraEntity.setPitch(cameraScreen.pitch());
 
 		Entity previousCamera = client.getCameraEntity();
 		Perspective previousPerspective = client.options.getPerspective();
