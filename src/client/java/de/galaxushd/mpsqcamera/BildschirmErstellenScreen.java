@@ -26,6 +26,8 @@ public final class BildschirmErstellenScreen extends Screen {
     private UUID selectedCameraId;
     private String selectedCameraName = "Keine Kamera gewählt";
     private String status = "";
+    /* Persists the selected mode while returning from CameraPickerScreen. */
+    private LocalScreenStore.ScreenInputType selectedMode = LocalScreenStore.ScreenInputType.LINK;
 
     public BildschirmErstellenScreen(BlockPos pos1, BlockPos pos2, Direction clickedSide) {
         super(Text.translatable("gui.mpsqcamera.erstellen.titel"));
@@ -37,20 +39,30 @@ public final class BildschirmErstellenScreen extends Screen {
         int cx = width / 2, fieldWidth = 220, y = height / 2 - 72;
         nameField = new TextFieldWidget(textRenderer, cx - fieldWidth / 2, y, fieldWidth, 20, Text.translatable("gui.mpsqcamera.erstellen.name"));
         nameField.setPlaceholder(Text.translatable("gui.mpsqcamera.erstellen.name.hinweis")); nameField.setMaxLength(64); nameField.setChangedListener(ignored -> updateCreateButton()); addDrawableChild(nameField); y += 28;
-        modeButton = addDrawableChild(CyclingButtonWidget.builder(LocalScreenStore.ScreenInputType::text).values(LocalScreenStore.ScreenInputType.values()).initially(LocalScreenStore.ScreenInputType.LINK)
-                .build(cx - fieldWidth / 2, y, fieldWidth, 20, Text.translatable("gui.mpsqcamera.erstellen.modus"), (b, mode) -> updateMode(mode))); y += 28;
+        modeButton = addDrawableChild(CyclingButtonWidget.builder(LocalScreenStore.ScreenInputType::text).values(LocalScreenStore.ScreenInputType.values()).initially(selectedMode)
+                .build(cx - fieldWidth / 2, y, fieldWidth, 20, Text.translatable("gui.mpsqcamera.erstellen.modus"), (b, mode) -> {
+                    selectedMode = mode;
+                    updateMode(mode);
+                })); y += 28;
         urlField = new TextFieldWidget(textRenderer, cx - fieldWidth / 2, y, fieldWidth, 20, Text.translatable("gui.mpsqcamera.erstellen.url")); urlField.setPlaceholder(Text.literal("https://...")); urlField.setMaxLength(2048); addDrawableChild(urlField); y += 28;
         cameraButton = addDrawableChild(ButtonWidget.builder(Text.literal("Kamera: " + selectedCameraName), b -> openCameraPicker()).dimensions(cx - fieldWidth / 2, y, fieldWidth, 20).build()); y += 32;
         createButton = addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.erstellen.erstellen"), b -> createScreen()).dimensions(cx - fieldWidth / 2, y, 106, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.erstellen.abbrechen"), b -> close()).dimensions(cx + 4, y, 106, 20).build());
-        updateMode(LocalScreenStore.ScreenInputType.LINK); updateCreateButton();
+        updateMode(selectedMode); updateCreateButton();
     }
 
     private void updateMode(LocalScreenStore.ScreenInputType mode) {
         boolean cinema = mode == LocalScreenStore.ScreenInputType.LINK;
         urlField.visible = cinema; urlField.setEditable(cinema); cameraButton.visible = !cinema; cameraButton.active = !cinema; updateCreateButton();
     }
-    private void openCameraPicker() { client.setScreen(new CameraPickerScreen(this, camera -> { selectedCameraId = camera.id(); selectedCameraName = camera.name(); status = ""; clearAndInit(); })); }
+    private void openCameraPicker() {
+        client.setScreen(new CameraPickerScreen(this, camera -> {
+            selectedCameraId = camera.id();
+            selectedCameraName = camera.name();
+            selectedMode = LocalScreenStore.ScreenInputType.CAMERA;
+            status = "";
+        }));
+    }
     private void updateCreateButton() {
         if (createButton == null || nameField == null || modeButton == null) return;
         boolean validName = !nameField.getText().trim().isBlank() && !screenNameExists(nameField.getText());
