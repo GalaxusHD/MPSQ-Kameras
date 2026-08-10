@@ -77,8 +77,8 @@ public final class ScreenCreationManager {
 
 		boolean usePressed = client.options.useKey.isPressed();
 		boolean escPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), GLFW.GLFW_KEY_ESCAPE);
-		boolean previousCameraPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), GLFW.GLFW_KEY_COMMA);
-		boolean nextCameraPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), GLFW.GLFW_KEY_PERIOD);
+		boolean previousCameraPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), GLFW.GLFW_KEY_LEFT);
+		boolean nextCameraPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), GLFW.GLFW_KEY_RIGHT);
 
 		if (client.player == null || client.world == null) {
 			if (activeViewSession != null) {
@@ -127,7 +127,22 @@ public final class ScreenCreationManager {
 
 	private static void switchCamera(UUID screenId, int direction) {
 		UUID camera = ScreenCameraStore.next(screenId, direction);
-		if (camera != null) MpsqCameraClient.LOGGER.info("[MPSQ] Aktive Kamera gewechselt: {}", camera);
+		if (camera == null) return;
+
+		// The selected camera is always scoped to the selected screen by
+		// ScreenCameraStore. While a local view is active, move that view and
+		// the optional remote broadcaster to the newly selected camera as well.
+		if (activeViewSession != null && activeViewSession.sourceAnchor() != null) {
+			LocalCameraStore.find(camera).ifPresent(data -> {
+				if (data.position() != null) {
+					activeViewSession.cameraEntity().setPosition(data.position());
+					activeViewSession.cameraEntity().setYaw(data.yaw());
+					activeViewSession.cameraEntity().setPitch(data.pitch());
+				}
+			});
+			RemoteCameraFrameManager.startPublishing(camera);
+		}
+		MpsqCameraClient.LOGGER.info("[MPSQ] Aktive Kamera gewechselt: {}", camera);
 	}
 
 	private static UUID activeCameraId(LocalScreenStore.LocalScreenData screen) {
@@ -190,12 +205,8 @@ public final class ScreenCreationManager {
 		ArmorStandEntity cameraEntity = new ArmorStandEntity(client.world, cameraPos.x, cameraPos.y, cameraPos.z);
 		cameraEntity.setNoGravity(true);
 		cameraEntity.setInvisible(true);
-        // Enter a camera from its saved viewing direction. The player can
-        // still look around after entering the anchored view mode.
-        player.setYaw(cameraScreen.yaw());
-        player.setPitch(cameraScreen.pitch());
-        cameraEntity.setYaw(cameraScreen.yaw());
-        cameraEntity.setPitch(cameraScreen.pitch());
+		cameraEntity.setYaw(player.getYaw());
+		cameraEntity.setPitch(player.getPitch());
 
 		Entity previousCamera = client.getCameraEntity();
 		Perspective previousPerspective = client.options.getPerspective();
@@ -212,6 +223,7 @@ public final class ScreenCreationManager {
 
 		client.setCameraEntity(cameraEntity);
 		client.options.setPerspective(Perspective.FIRST_PERSON);
+		RemoteCameraFrameManager.startPublishing(cameraId);
 		player.sendMessage(Text.translatable("status.mpsqcamera.view_enter"), true);
 	}
 
@@ -276,6 +288,7 @@ public final class ScreenCreationManager {
 		if (activeViewSession == null) return;
 		ViewSession session = activeViewSession;
 		activeViewSession = null;
+		RemoteCameraFrameManager.stopPublishing();
 
 		if (client.options != null) {
 			client.options.setPerspective(session.previousPerspective());

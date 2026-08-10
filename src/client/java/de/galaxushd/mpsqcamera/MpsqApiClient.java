@@ -20,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -60,6 +61,27 @@ public final class MpsqApiClient {
     public static CompletableFuture<JsonElement> post(String path, JsonObject body) { return request("POST", path, body, true); }
     public static CompletableFuture<JsonElement> patch(String path, JsonObject body) { return request("PATCH", path, body, true); }
     public static CompletableFuture<JsonElement> delete(String path) { return request("DELETE", path, null, true); }
+
+    /** Uploads one low-rate PNG frame for a camera currently viewed by this client. */
+    public static CompletableFuture<JsonElement> postCameraFrame(UUID cameraId, byte[] png) {
+        JsonObject body = new JsonObject();
+        body.addProperty("pngBase64", Base64.getEncoder().encodeToString(png));
+        return post("/cameras/" + cameraId + "/frame", body);
+    }
+
+    /** Cameras whose wearer is this client. Their wearer publishes a bodycam frame. */
+    public static CompletableFuture<List<UUID>> loadMyBodycamIds() {
+        return get("/bodycams/mine").thenApply(json -> {
+            List<UUID> ids = new ArrayList<>();
+            if (!json.isJsonArray()) return ids;
+            for (JsonElement row : json.getAsJsonArray()) {
+                if (row.isJsonObject() && row.getAsJsonObject().has("id")) {
+                    ids.add(UUID.fromString(row.getAsJsonObject().get("id").getAsString()));
+                }
+            }
+            return ids;
+        });
+    }
 
     /** True once this client has a local API token and can safely poll shared screen state. */
     public static boolean isReady() {

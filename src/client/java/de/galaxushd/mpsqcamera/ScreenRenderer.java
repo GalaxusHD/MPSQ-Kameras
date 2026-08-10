@@ -60,9 +60,18 @@ public final class ScreenRenderer {
             double y2 = Math.max(first.getY(), second.getY()) + 1.0;
             double z2 = Math.max(first.getZ(), second.getZ()) + 1.0;
 
-            CinemaBrowserManager.ScreenStatus screenStatus = screen.inputType() == LocalScreenStore.ScreenInputType.CAMERA
-                    && !ScreenCameraStore.hasCameras(screen.id())
-                    ? CinemaBrowserManager.ScreenStatus.OFFLINE
+            boolean cameraScreen = screen.inputType() == LocalScreenStore.ScreenInputType.CAMERA;
+            java.util.UUID activeCamera = cameraScreen ? ScreenCameraStore.active(screen.id()) : null;
+            // Older records and freshly-created screens may not have reached the
+            // per-screen cache yet. The primary camera is still a valid fallback.
+            if (cameraScreen && activeCamera == null) {
+                activeCamera = screen.cameraId();
+            }
+            Identifier texture = cameraScreen
+                    ? RemoteCameraFrameManager.texture(activeCamera)
+                    : CinemaBrowserManager.texture(screen.id());
+            CinemaBrowserManager.ScreenStatus screenStatus = cameraScreen
+                    ? (texture == null ? CinemaBrowserManager.ScreenStatus.OFFLINE : CinemaBrowserManager.ScreenStatus.NONE)
                     : CinemaBrowserManager.status(screen);
 
             drawScreenFace(
@@ -70,7 +79,7 @@ public final class ScreenRenderer {
                     consumers,
                     vertices,
                     ScreenAccessStore.front(screen.id()),
-                    CinemaBrowserManager.texture(screen.id()),
+                    texture,
                     screenStatus,
                     x1, y1, z1,
                     x2, y2, z2

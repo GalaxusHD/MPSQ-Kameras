@@ -18,6 +18,7 @@ public class MpsqCameraClient implements ClientModInitializer {
         CameraHologramManager.initialize();
         SelectionRenderer.initialize();
         ScreenRenderer.initialize();
+        RemoteCameraFrameManager.initialize();
         CinemaBrowserManager.initialize();
         MpsqApiClient.initialize().thenCompose(ignored -> MpsqApiClient.refreshCameras())
         .thenCompose(ignored -> ScreenSyncManager.refresh()).exceptionally(error -> {
