@@ -75,8 +75,12 @@ public final class RemoteCameraFrameManager {
         lastPublishMs = now;
         publishing = true;
 
-        // Downscale to keep the first implementation bandwidth-friendly.
-        ScreenshotRecorder.takeScreenshot(client.getFramebuffer(), 4, image -> {
+        // A downscale factor must divide *both* framebuffer dimensions. Player
+        // window sizes are arbitrary (for example 2560x1334), so a hard-coded
+        // factor can crash the render thread. Pick only a valid factor.
+        int downscale = safeDownscaleFactor(client.getFramebuffer().textureWidth,
+                client.getFramebuffer().textureHeight);
+        ScreenshotRecorder.takeScreenshot(client.getFramebuffer(), downscale, image -> {
             byte[] png;
             try {
                 png = encode(image);
@@ -129,6 +133,12 @@ public final class RemoteCameraFrameManager {
         } finally {
             Files.deleteIfExists(file);
         }
+    }
+
+    private static int safeDownscaleFactor(int width, int height) {
+        if (width > 0 && height > 0 && width % 4 == 0 && height % 4 == 0) return 4;
+        if (width > 0 && height > 0 && width % 2 == 0 && height % 2 == 0) return 2;
+        return 1;
     }
 
     private static void requestLatestFrame(UUID cameraId) {
