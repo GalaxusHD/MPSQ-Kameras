@@ -68,8 +68,9 @@ public final class ScreenCreationManager {
 
 		suppressMovementAndInteraction(client);
 		lockPlayerPosition(client.player, activeViewSession.originPos());
-		activeViewSession.cameraEntity().setYaw(client.player.getYaw());
-		activeViewSession.cameraEntity().setPitch(client.player.getPitch());
+		// The camera entity must not inherit the player's body rotation every
+		// tick. That caused the rendered view to snap/spin while the player was
+		// anchored at the original location.
 	}
 
 	private static void onEndTick(MinecraftClient client) {
@@ -205,8 +206,8 @@ public final class ScreenCreationManager {
 		ArmorStandEntity cameraEntity = new ArmorStandEntity(client.world, cameraPos.x, cameraPos.y, cameraPos.z);
 		cameraEntity.setNoGravity(true);
 		cameraEntity.setInvisible(true);
-		cameraEntity.setYaw(player.getYaw());
-		cameraEntity.setPitch(player.getPitch());
+		cameraEntity.setYaw(cameraScreen.yaw());
+		cameraEntity.setPitch(cameraScreen.pitch());
 
 		Entity previousCamera = client.getCameraEntity();
 		Perspective previousPerspective = client.options.getPerspective();

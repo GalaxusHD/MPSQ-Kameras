@@ -30,7 +30,10 @@ import java.util.concurrent.CompletableFuture;
  * newest PNG from the MPSQ storage bucket.
  */
 public final class RemoteCameraFrameManager {
-    private static final long FRAME_INTERVAL_MS = 1_000L;
+    /** Test stream rate. An upload never overlaps the preceding upload. */
+    private static final long FRAME_INTERVAL_MS = 100L;
+    private static final int STREAM_WIDTH = 480;
+    private static final int STREAM_HEIGHT = 270;
     private static final HttpClient HTTP = HttpClient.newHttpClient();
     private static final Map<UUID, Identifier> TEXTURE_IDS = new HashMap<>();
     private static final Map<UUID, NativeImageBackedTexture> TEXTURES = new HashMap<>();
@@ -75,15 +78,17 @@ public final class RemoteCameraFrameManager {
         lastPublishMs = now;
         publishing = true;
 
-        // A downscale factor must divide *both* framebuffer dimensions. Player
-        // window sizes are arbitrary (for example 2560x1334), so a hard-coded
-        // factor can crash the render thread. Pick only a valid factor.
-        int downscale = safeDownscaleFactor(client.getFramebuffer().textureWidth,
-                client.getFramebuffer().textureHeight);
-        ScreenshotRecorder.takeScreenshot(client.getFramebuffer(), downscale, image -> {
+        // Capture at a safe factor of one, then crop and resize to a fixed
+        // 16:9 stream image. This works for every window resolution.
+        ScreenshotRecorder.takeScreenshot(client.getFramebuffer(), 1, image -> {
             byte[] png;
             try {
-                png = encode(image);
+                NativeImage streamImage = resizeForStream(image);
+                try {
+                    png = encode(streamImage);
+                } finally {
+                    streamImage.close();
+                }
             } catch (IOException exception) {
                 image.close();
                 publishing = false;
@@ -135,10 +140,27 @@ public final class RemoteCameraFrameManager {
         }
     }
 
-    private static int safeDownscaleFactor(int width, int height) {
-        if (width > 0 && height > 0 && width % 4 == 0 && height % 4 == 0) return 4;
-        if (width > 0 && height > 0 && width % 2 == 0 && height % 2 == 0) return 2;
-        return 1;
+    private static NativeImage resizeForStream(NativeImage source) {
+        int sourceWidth = source.getWidth();
+        int sourceHeight = source.getHeight();
+        double targetRatio = (double) STREAM_WIDTH / STREAM_HEIGHT;
+        double sourceRatio = (double) sourceWidth / sourceHeight;
+
+        int cropX = 0;
+        int cropY = 0;
+        int cropWidth = sourceWidth;
+        int cropHeight = sourceHeight;
+        if (sourceRatio > targetRatio) {
+            cropWidth = (int) Math.round(sourceHeight * targetRatio);
+            cropX = (sourceWidth - cropWidth) / 2;
+        } else if (sourceRatio < targetRatio) {
+            cropHeight = (int) Math.round(sourceWidth / targetRatio);
+            cropY = (sourceHeight - cropHeight) / 2;
+        }
+
+        NativeImage target = new NativeImage(STREAM_WIDTH, STREAM_HEIGHT, false);
+        source.resizeSubRectTo(cropX, cropY, cropWidth, cropHeight, target);
+        return target;
     }
 
     private static void requestLatestFrame(UUID cameraId) {
