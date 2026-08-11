@@ -1,21 +1,13 @@
 package de.galaxushd.mpsqcamera;
 
 import com.google.gson.JsonElement;
-import de.galaxushd.mpsqcamera.mixin.client.GameRendererInvoker;
-import de.galaxushd.mpsqcamera.mixin.client.MinecraftClientAccessor;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.Framebuffer;
-import net.minecraft.client.gl.SimpleFramebuffer;
-import net.minecraft.client.option.Perspective;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.client.util.ScreenshotRecorder;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.decoration.ArmorStandEntity;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.math.Vec3d;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -25,145 +17,104 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Sends a separate, fixed view for every locally loaded static-camera chunk.
+ * Stable camera-frame transport.
  *
- * <p>The pass deliberately renders into its own framebuffer; it never steals
- * or screenshots the player's regular view. It is limited to 480x270 and one
- * pass per 100 ms, so the normal game render remains the priority.</p>
+ * <p>Only Minecraft's already completed normal render is captured. This is
+ * intentional: rendering the world a second time while Minecraft is drawing
+ * caused camera jumps, hand artefacts and broken freecam movement.</p>
  */
 public final class RemoteCameraFrameManager {
-    public static final long FRAME_INTERVAL_MS = 100L;
-    public static final int STREAM_WIDTH = 480;
-    public static final int STREAM_HEIGHT = 270;
-
+    private static final long FRAME_INTERVAL_MS = 100L;
+    private static final int STREAM_WIDTH = 480;
+    private static final int STREAM_HEIGHT = 270;
     private static final HttpClient HTTP = HttpClient.newHttpClient();
     private static final Map<UUID, Identifier> TEXTURE_IDS = new HashMap<>();
     private static final Map<UUID, NativeImageBackedTexture> TEXTURES = new HashMap<>();
     private static final Map<UUID, Long> LAST_REQUEST_MS = new HashMap<>();
     private static final Set<UUID> OWN_BODYCAMS = new HashSet<>();
 
-    private static long lastRenderMs;
+    private static UUID providerCamera;
+    private static long lastPublishMs;
     private static long lastBodycamRefreshMs;
+    private static boolean publishing;
     private static boolean bodycamRefreshInFlight;
-    private static boolean renderingCameraPass;
-    private static boolean uploadInFlight;
-    private static int nextCameraIndex;
-    private static SimpleFramebuffer cameraFramebuffer;
 
     private RemoteCameraFrameManager() { }
 
     public static void initialize() {
-        WorldRenderEvents.END.register(context -> renderLoadedCamera());
+        WorldRenderEvents.END.register(context -> captureProviderFrame());
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> clear());
     }
 
-    /** Kept for existing view-mode callers; streaming is now automatic. */
-    public static void startPublishing(UUID ignoredCameraId) { }
+    /** Starts transmission from the camera view the player explicitly entered. */
+    public static void startPublishing(UUID cameraId) {
+        providerCamera = cameraId;
+        lastPublishMs = 0L;
+    }
 
-    /** Kept for existing view-mode callers; leaving a view never disables a locally loaded camera. */
-    public static void stopPublishing() { }
+    /** Stops static-camera transmission immediately after leaving the view. */
+    public static void stopPublishing() {
+        providerCamera = null;
+    }
 
-    /** Returns the newest remote texture, or null while the camera is offline. */
     public static Identifier texture(UUID cameraId) {
         if (cameraId == null) return null;
         requestLatestFrame(cameraId);
         return TEXTURE_IDS.get(cameraId);
     }
 
-    private static void renderLoadedCamera() {
-        if (renderingCameraPass || uploadInFlight) return;
+    private static void captureProviderFrame() {
         MinecraftClient client = MinecraftClient.getInstance();
         refreshMyBodycams();
-        if (client.world == null || client.player == null || client.getCameraEntity() == null || !MpsqApiClient.isReady()) return;
-
+        if ((providerCamera == null && OWN_BODYCAMS.isEmpty()) || publishing || client.getFramebuffer() == null) return;
         long now = System.currentTimeMillis();
-        if (now - lastRenderMs < FRAME_INTERVAL_MS) return;
+        if (now - lastPublishMs < FRAME_INTERVAL_MS) return;
+        lastPublishMs = now;
+        publishing = true;
 
-        List<LocalCameraStore.CameraData> candidates = loadedStaticCameras(client);
-        if (candidates.isEmpty()) return;
-        LocalCameraStore.CameraData camera = candidates.get(Math.floorMod(nextCameraIndex++, candidates.size()));
-        lastRenderMs = now;
-        renderCameraPass(client, camera);
-    }
-
-    private static List<LocalCameraStore.CameraData> loadedStaticCameras(MinecraftClient client) {
-        String dimension = client.world.getRegistryKey().getValue().toString();
-        List<LocalCameraStore.CameraData> cameras = new ArrayList<>();
-        for (LocalCameraStore.CameraData camera : LocalCameraStore.getAll()) {
-            if (camera.kind() != LocalCameraStore.CameraKind.STATIC || camera.position() == null || !dimension.equals(camera.dimension())) continue;
-            int chunkX = ((int) Math.floor(camera.position().x)) >> 4;
-            int chunkZ = ((int) Math.floor(camera.position().z)) >> 4;
-            if (client.world.getChunkManager().isChunkLoaded(chunkX, chunkZ)) cameras.add(camera);
-        }
-        return cameras;
-    }
-
-    private static void renderCameraPass(MinecraftClient client, LocalCameraStore.CameraData camera) {
-        Framebuffer playerFramebuffer = client.getFramebuffer();
-        Entity playerCamera = client.getCameraEntity();
-        Perspective playerPerspective = client.options.getPerspective();
-        ArmorStandEntity cameraEntity = new ArmorStandEntity(client.world, camera.position().x, camera.position().y, camera.position().z);
-        cameraEntity.setNoGravity(true);
-        cameraEntity.setInvisible(true);
-        cameraEntity.setYaw(camera.yaw());
-        cameraEntity.setPitch(camera.pitch());
-
-        try {
-            ensureCameraFramebuffer();
-            renderingCameraPass = true;
-            client.setCameraEntity(cameraEntity);
-            client.options.setPerspective(Perspective.FIRST_PERSON);
-            ((MinecraftClientAccessor) client).mpsq$setFramebuffer(cameraFramebuffer);
-            ((GameRendererInvoker) ((MinecraftClientAccessor) client).mpsq$getGameRenderer())
-                    .mpsq$renderWorld(client.getRenderTickCounter());
-
-            uploadInFlight = true;
-            ScreenshotRecorder.takeScreenshot(cameraFramebuffer, 1, image -> uploadRenderedFrame(camera.id(), image));
-        } catch (Throwable error) {
-            MpsqCameraClient.LOGGER.warn("[MPSQ] Separater Kamera-Renderdurchlauf fehlgeschlagen", error);
-            uploadInFlight = false;
-        } finally {
-            ((MinecraftClientAccessor) client).mpsq$setFramebuffer(playerFramebuffer);
-            client.setCameraEntity(playerCamera);
-            client.options.setPerspective(playerPerspective);
-            renderingCameraPass = false;
-        }
-    }
-
-    private static void ensureCameraFramebuffer() {
-        if (cameraFramebuffer == null) {
-            cameraFramebuffer = new SimpleFramebuffer("mpsq_camera", STREAM_WIDTH, STREAM_HEIGHT, true);
-        }
-    }
-
-    private static void uploadRenderedFrame(UUID cameraId, NativeImage image) {
-        byte[] png;
-        try {
-            png = encode(image);
-        } catch (IOException error) {
-            MpsqCameraClient.LOGGER.warn("[MPSQ] Kamera-Bild konnte nicht erzeugt werden", error);
+        ScreenshotRecorder.takeScreenshot(client.getFramebuffer(), 1, image -> {
+            byte[] png;
+            try {
+                NativeImage streamImage = resizeForStream(image);
+                try {
+                    png = encode(streamImage);
+                } finally {
+                    streamImage.close();
+                }
+            } catch (IOException exception) {
+                image.close();
+                publishing = false;
+                MpsqCameraClient.LOGGER.warn("Kamera-Bild konnte nicht erzeugt werden", exception);
+                return;
+            }
             image.close();
-            uploadInFlight = false;
-            return;
-        }
-        image.close();
-        MpsqApiClient.postCameraFrame(cameraId, png).whenComplete((ignored, error) -> {
-            uploadInFlight = false;
-            if (error != null) MpsqCameraClient.LOGGER.debug("[MPSQ] Kamera-Bild konnte nicht hochgeladen werden", error);
+            Set<UUID> targets;
+            synchronized (OWN_BODYCAMS) {
+                targets = new HashSet<>(OWN_BODYCAMS);
+            }
+            if (providerCamera != null) targets.add(providerCamera);
+            if (targets.isEmpty()) {
+                publishing = false;
+                return;
+            }
+            CompletableFuture<?>[] uploads = targets.stream()
+                    .map(cameraId -> MpsqApiClient.postCameraFrame(cameraId, png))
+                    .toArray(CompletableFuture[]::new);
+            CompletableFuture.allOf(uploads).whenComplete((ignored, error) -> {
+                publishing = false;
+                if (error != null) MpsqCameraClient.LOGGER.debug("Kamera-Bild konnte nicht hochgeladen werden", error);
+            });
         });
     }
 
-    /** A wearer who accepted a bodycam continues to publish their own first-person view. */
     private static void refreshMyBodycams() {
         if (!MpsqApiClient.isReady() || bodycamRefreshInFlight) return;
         long now = System.currentTimeMillis();
@@ -172,9 +123,11 @@ public final class RemoteCameraFrameManager {
         bodycamRefreshInFlight = true;
         MpsqApiClient.loadMyBodycamIds().whenComplete((ids, error) -> {
             bodycamRefreshInFlight = false;
-            if (error == null && ids != null) synchronized (OWN_BODYCAMS) {
-                OWN_BODYCAMS.clear();
-                OWN_BODYCAMS.addAll(ids);
+            if (error == null && ids != null) {
+                synchronized (OWN_BODYCAMS) {
+                    OWN_BODYCAMS.clear();
+                    OWN_BODYCAMS.addAll(ids);
+                }
             }
         });
     }
@@ -187,6 +140,27 @@ public final class RemoteCameraFrameManager {
         } finally {
             Files.deleteIfExists(file);
         }
+    }
+
+    private static NativeImage resizeForStream(NativeImage source) {
+        int sourceWidth = source.getWidth();
+        int sourceHeight = source.getHeight();
+        double targetRatio = (double) STREAM_WIDTH / STREAM_HEIGHT;
+        double sourceRatio = (double) sourceWidth / sourceHeight;
+        int cropX = 0;
+        int cropY = 0;
+        int cropWidth = sourceWidth;
+        int cropHeight = sourceHeight;
+        if (sourceRatio > targetRatio) {
+            cropWidth = (int) Math.round(sourceHeight * targetRatio);
+            cropX = (sourceWidth - cropWidth) / 2;
+        } else if (sourceRatio < targetRatio) {
+            cropHeight = (int) Math.round(sourceWidth / targetRatio);
+            cropY = (sourceHeight - cropHeight) / 2;
+        }
+        NativeImage target = new NativeImage(STREAM_WIDTH, STREAM_HEIGHT, false);
+        source.resizeSubRectTo(cropX, cropY, cropWidth, cropHeight, target);
+        return target;
     }
 
     private static void requestLatestFrame(UUID cameraId) {
@@ -211,8 +185,11 @@ public final class RemoteCameraFrameManager {
         return HTTP.sendAsync(request, HttpResponse.BodyHandlers.ofByteArray())
                 .thenApply(HttpResponse::body)
                 .thenApply(bytes -> {
-                    try { return NativeImage.read(new ByteArrayInputStream(bytes)); }
-                    catch (IOException exception) { throw new IllegalStateException(exception); }
+                    try {
+                        return NativeImage.read(new ByteArrayInputStream(bytes));
+                    } catch (IOException exception) {
+                        throw new IllegalStateException(exception);
+                    }
                 });
     }
 
@@ -238,12 +215,11 @@ public final class RemoteCameraFrameManager {
     }
 
     private static void clear() {
+        stopPublishing();
         TEXTURES.values().forEach(NativeImageBackedTexture::close);
         TEXTURES.clear();
         TEXTURE_IDS.clear();
         LAST_REQUEST_MS.clear();
         OWN_BODYCAMS.clear();
-        if (cameraFramebuffer != null) cameraFramebuffer.delete();
-        cameraFramebuffer = null;
     }
 }
