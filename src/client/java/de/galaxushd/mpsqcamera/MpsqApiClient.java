@@ -89,7 +89,9 @@ public final class MpsqApiClient {
     }
 
     public static CompletableFuture<List<LocalCameraStore.CameraData>> loadCameras() {
-        return get("/cameras").thenApply(json -> {
+        // Includes own cameras and cameras attached to screens this client may
+        // view. A nearby mod user can therefore become a static-camera source.
+        return get("/cameras/accessible").thenApply(json -> {
             List<LocalCameraStore.CameraData> cameras = new ArrayList<>();
             for (JsonElement element : json.getAsJsonArray()) {
                 JsonObject row = element.getAsJsonObject();
