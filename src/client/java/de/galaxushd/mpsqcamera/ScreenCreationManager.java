@@ -21,6 +21,7 @@ import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.lwjgl.glfw.GLFW;
@@ -68,9 +69,23 @@ public final class ScreenCreationManager {
 
 		suppressMovementAndInteraction(client);
 		lockPlayerPosition(client.player, activeViewSession.originPos());
-		// The camera entity must not inherit the player's body rotation every
-		// tick. That caused the rendered view to snap/spin while the player was
-		// anchored at the original location.
+		updateCameraLookFromMouse(client.player, activeViewSession);
+	}
+
+	/**
+	 * Minecraft sends mouse movement to the player, not to our invisible camera
+	 * entity. Transfer only the relative movement. This retains the saved camera
+	 * direction on entry and prevents snapping back to the player's body yaw.
+	 */
+	private static void updateCameraLookFromMouse(ClientPlayerEntity player, ViewSession session) {
+		float yawDelta = MathHelper.wrapDegrees(player.getYaw() - session.lastPlayerYaw);
+		float pitchDelta = player.getPitch() - session.lastPlayerPitch;
+		if (yawDelta != 0.0f || pitchDelta != 0.0f) {
+			session.cameraEntity.setYaw(MathHelper.wrapDegrees(session.cameraEntity.getYaw() + yawDelta));
+			session.cameraEntity.setPitch(MathHelper.clamp(session.cameraEntity.getPitch() + pitchDelta, -90.0f, 90.0f));
+		}
+		session.lastPlayerYaw = player.getYaw();
+		session.lastPlayerPitch = player.getPitch();
 	}
 
 	private static void onEndTick(MinecraftClient client) {
@@ -139,6 +154,11 @@ public final class ScreenCreationManager {
 					activeViewSession.cameraEntity().setPosition(data.position());
 					activeViewSession.cameraEntity().setYaw(data.yaw());
 					activeViewSession.cameraEntity().setPitch(data.pitch());
+					MinecraftClient client = MinecraftClient.getInstance();
+					if (client.player != null) {
+						activeViewSession.lastPlayerYaw = client.player.getYaw();
+						activeViewSession.lastPlayerPitch = client.player.getPitch();
+					}
 				}
 			});
 			RemoteCameraFrameManager.startPublishing(camera);
@@ -219,7 +239,9 @@ public final class ScreenCreationManager {
 				client.world.getRegistryKey(),
 				previousCamera,
 				previousPerspective,
-				cameraEntity
+				cameraEntity,
+				player.getYaw(),
+				player.getPitch()
 		);
 
 		client.setCameraEntity(cameraEntity);
@@ -473,13 +495,37 @@ public final class ScreenCreationManager {
 		return Items.INK_SAC;
 	}
 
-	private record ViewSession(
-			BlockPos sourceAnchor,
-			UUID cameraId,
-			Vec3d originPos,
-			RegistryKey<World> originDimension,
-			Entity previousCameraEntity,
-			Perspective previousPerspective,
-			ArmorStandEntity cameraEntity
-	) {}
+	private static final class ViewSession {
+		private final BlockPos sourceAnchor;
+		private final UUID cameraId;
+		private final Vec3d originPos;
+		private final RegistryKey<World> originDimension;
+		private final Entity previousCameraEntity;
+		private final Perspective previousPerspective;
+		private final ArmorStandEntity cameraEntity;
+		private float lastPlayerYaw;
+		private float lastPlayerPitch;
+
+		private ViewSession(BlockPos sourceAnchor, UUID cameraId, Vec3d originPos,
+				RegistryKey<World> originDimension, Entity previousCameraEntity,
+				Perspective previousPerspective, ArmorStandEntity cameraEntity,
+				float lastPlayerYaw, float lastPlayerPitch) {
+			this.sourceAnchor = sourceAnchor;
+			this.cameraId = cameraId;
+			this.originPos = originPos;
+			this.originDimension = originDimension;
+			this.previousCameraEntity = previousCameraEntity;
+			this.previousPerspective = previousPerspective;
+			this.cameraEntity = cameraEntity;
+			this.lastPlayerYaw = lastPlayerYaw;
+			this.lastPlayerPitch = lastPlayerPitch;
+		}
+
+		private BlockPos sourceAnchor() { return sourceAnchor; }
+		private Vec3d originPos() { return originPos; }
+		private RegistryKey<World> originDimension() { return originDimension; }
+		private Entity previousCameraEntity() { return previousCameraEntity; }
+		private Perspective previousPerspective() { return previousPerspective; }
+		private ArmorStandEntity cameraEntity() { return cameraEntity; }
+	}
 }
