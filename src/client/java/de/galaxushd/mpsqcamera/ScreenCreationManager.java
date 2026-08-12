@@ -250,6 +250,7 @@ public final class ScreenCreationManager {
 
 		client.setCameraEntity(cameraEntity);
 		client.options.setPerspective(Perspective.FIRST_PERSON);
+		CameraHologramManager.hideForCameraView();
 		RemoteCameraFrameManager.startPublishing(cameraId);
 		player.sendMessage(Text.translatable("status.mpsqcamera.view_enter"), true);
 	}
@@ -337,6 +338,7 @@ public final class ScreenCreationManager {
 		activeViewSession = null;
 		exitSnapshotPending = false;
 		RemoteCameraFrameManager.stopPublishing();
+		CameraHologramManager.showAfterCameraView();
 
 		if (client.options != null) {
 			client.options.setPerspective(session.previousPerspective());

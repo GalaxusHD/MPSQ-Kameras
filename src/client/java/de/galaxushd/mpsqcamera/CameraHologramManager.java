@@ -22,6 +22,7 @@ public final class CameraHologramManager {
     private static final String CAMERA_HEAD_TEXTURE = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOGZiZWQzNzI1YzA1Mjc0OGI2NWJlODQ3ZTE5NDJmNzU5YzNhOGRhMDY0OWY4MDUwODdiMDM2Nzk2NDE2MWI0ZCJ9fX0=";
     private static final Map<UUID, ArmorStandEntity> HOLOGRAMS = new HashMap<>();
     private static int nextEntityId = -2_000_000_000;
+	private static boolean hiddenForCameraView;
 
     private CameraHologramManager() { }
 
@@ -71,7 +72,30 @@ public final class CameraHologramManager {
     public static void clear() {
         for (ArmorStandEntity stand : HOLOGRAMS.values()) stand.discard();
         HOLOGRAMS.clear();
+		hiddenForCameraView = false;
     }
+
+	/** Hides local camera markers while their world is used as a camera view. */
+	public static void hideForCameraView() {
+		if (hiddenForCameraView) return;
+		hiddenForCameraView = true;
+		for (ArmorStandEntity stand : HOLOGRAMS.values()) {
+			stand.setInvisible(true);
+			stand.equipStack(EquipmentSlot.HEAD, ItemStack.EMPTY);
+		}
+	}
+
+	/** Restores all local camera markers after leaving the camera view. */
+	public static void showAfterCameraView() {
+		if (!hiddenForCameraView) return;
+		hiddenForCameraView = false;
+		for (LocalCameraStore.CameraData camera : LocalCameraStore.getAll()) {
+			ArmorStandEntity stand = HOLOGRAMS.get(camera.id());
+			if (stand == null || camera.position() == null) continue;
+			applyTransform(stand, camera);
+			stand.equipStack(EquipmentSlot.HEAD, createCameraHead());
+		}
+	}
 
     private static ItemStack createCameraHead() {
         ItemStack head = new ItemStack(Items.PLAYER_HEAD);
