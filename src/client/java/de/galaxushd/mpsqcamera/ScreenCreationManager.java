@@ -21,7 +21,6 @@ import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.lwjgl.glfw.GLFW;
@@ -69,23 +68,19 @@ public final class ScreenCreationManager {
 
 		suppressMovementAndInteraction(client);
 		lockPlayerPosition(client.player, activeViewSession.originPos());
-		// Beim Verlassen wird exakt ein Bild aus der gespeicherten Standard-
-		// blickrichtung aufgenommen. Mausbewegungen duerfen diese Aufnahme nicht
-		// mehr veraendern.
-		if (!exitSnapshotPending) {
-			syncCameraLookWithPlayer(client.player, activeViewSession);
-		}
 	}
 
 	/**
-	 * Minecraft sends mouse movement to the player. The invisible camera proxy
-	 * copies that exact rotation every tick, while keeping its saved position.
-	 * This avoids accumulating relative mouse deltas, which caused spinning and
-	 * an offset view after entering a camera.
+	 * Called directly after Minecraft has applied a mouse movement. Doing this
+	 * per rendered frame (rather than once per game tick) keeps the camera proxy
+	 * and the player look direction in the same render step.
 	 */
-	private static void syncCameraLookWithPlayer(ClientPlayerEntity player, ViewSession session) {
-		session.cameraEntity.setYaw(player.getYaw());
-		session.cameraEntity.setPitch(MathHelper.clamp(player.getPitch(), -90.0f, 90.0f));
+	public static void onMouseLookUpdated() {
+		if (activeViewSession == null || exitSnapshotPending) return;
+		MinecraftClient client = MinecraftClient.getInstance();
+		if (client.player == null) return;
+		activeViewSession.cameraEntity().setYaw(client.player.getYaw());
+		activeViewSession.cameraEntity().setPitch(client.player.getPitch());
 	}
 
 	private static void onEndTick(MinecraftClient client) {
@@ -255,6 +250,7 @@ public final class ScreenCreationManager {
 
 		client.setCameraEntity(cameraEntity);
 		client.options.setPerspective(Perspective.FIRST_PERSON);
+		CameraHologramManager.hideForCameraView();
 		RemoteCameraFrameManager.startPublishing(cameraId);
 		player.sendMessage(Text.translatable("status.mpsqcamera.view_enter"), true);
 	}
@@ -342,6 +338,7 @@ public final class ScreenCreationManager {
 		activeViewSession = null;
 		exitSnapshotPending = false;
 		RemoteCameraFrameManager.stopPublishing();
+		CameraHologramManager.showAfterCameraView();
 
 		if (client.options != null) {
 			client.options.setPerspective(session.previousPerspective());
