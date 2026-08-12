@@ -68,7 +68,11 @@ public final class ScreenCreationManager {
 		}
 
 		suppressMovementAndInteraction(client);
-		lockPlayerPosition(client.player, activeViewSession.originPos());
+		// Do not teleport the real player every tick. On a multiplayer server that
+		// causes repeated position/rotation corrections, which in turn makes the
+		// client camera snap back or spin. The disabled movement keys and zero
+		// velocity keep the body in place without fighting the server.
+		client.player.setVelocity(Vec3d.ZERO);
 	}
 
 	/**
@@ -87,11 +91,9 @@ public final class ScreenCreationManager {
 		proxy.setYaw(MathHelper.wrapDegrees(proxy.getYaw() + yawDelta));
 		proxy.setPitch(MathHelper.clamp(proxy.getPitch() + pitchDelta, -90.0f, 90.0f));
 
-		// Keep the actual player completely still, including their look direction.
-		// This prevents periodic server position/rotation packets from affecting
-		// the client-only camera view.
-		client.player.setYaw(yawBeforeMouse);
-		client.player.setPitch(pitchBeforeMouse);
+		// The player may keep their own rotation. Resetting it after every mouse
+		// event fights Minecraft's mouse handling and is the source of visible
+		// view snaps. Only the proxy's rotation is used for the remote view.
 	}
 
 	private static void onEndTick(MinecraftClient client) {
@@ -287,11 +289,7 @@ public final class ScreenCreationManager {
 		if (sourceScreen.inputType() != LocalScreenStore.ScreenInputType.CAMERA || cameraId == null) return false;
 
 		LocalCameraStore.CameraData cameraScreen = LocalCameraStore.find(cameraId).orElse(null);
-		if (cameraScreen == null || cameraScreen.position() == null) return false;
-
-		Vec3d cameraPos = cameraScreen.position();
-		session.cameraEntity().setPosition(toCameraProxyPos(session.cameraEntity(), cameraPos));
-		return true;
+		return cameraScreen != null && cameraScreen.position() != null;
 	}
 
 	private static void suppressMovementAndInteraction(MinecraftClient client) {
@@ -308,7 +306,6 @@ public final class ScreenCreationManager {
 
 	private static void lockPlayerPosition(ClientPlayerEntity player, Vec3d originPos) {
 		player.setVelocity(Vec3d.ZERO);
-		player.setPosition(originPos.x, originPos.y, originPos.z);
 	}
 
 	private static void exitViewMode(MinecraftClient client, boolean notify) {
