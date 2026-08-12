@@ -33,7 +33,6 @@ public final class ScreenCreationManager {
 	private static final double CAMERA_LOAD_RANGE = 48.0;
 	private static final long VIEW_ENTER_COOLDOWN_MS = 400L;
 	private static final long OFFLINE_HINT_INTERVAL_MS = 1000L;
-	private static final double CAMERA_PROXY_BASE_OFFSET = 1.55;
 
 	private static boolean wasUsePressedLastTick = false;
 	private static boolean wasEscPressedLastTick = false;
@@ -152,7 +151,7 @@ public final class ScreenCreationManager {
 		if (activeViewSession != null && activeViewSession.sourceAnchor() != null) {
 			LocalCameraStore.find(camera).ifPresent(data -> {
 				if (data.position() != null) {
-					activeViewSession.cameraEntity().setPosition(toCameraProxyPos(data.position()));
+					activeViewSession.cameraEntity().setPosition(toCameraProxyPos(activeViewSession.cameraEntity(), data.position()));
 					activeViewSession.cameraEntity().setYaw(data.yaw());
 					activeViewSession.cameraEntity().setPitch(data.pitch());
 					MinecraftClient client = MinecraftClient.getInstance();
@@ -224,8 +223,11 @@ public final class ScreenCreationManager {
 			return;
 		}
 
-		Vec3d proxyPos = toCameraProxyPos(cameraPos);
-		ArmorStandEntity cameraEntity = new ArmorStandEntity(client.world, proxyPos.x, proxyPos.y, proxyPos.z);
+		// Die gespeicherte Position ist der Blickpunkt der Kamera. Die genaue
+		// Augenhoehe des unsichtbaren Proxis wird deshalb nach dem Erzeugen
+		// dynamisch ausgeglichen, statt durch einen festen Wert geschaetzt.
+		ArmorStandEntity cameraEntity = new ArmorStandEntity(client.world, cameraPos.x, cameraPos.y, cameraPos.z);
+		cameraEntity.setPosition(toCameraProxyPos(cameraEntity, cameraPos));
 		cameraEntity.setNoGravity(true);
 		cameraEntity.setInvisible(true);
 		cameraEntity.setYaw(cameraScreen.yaw());
@@ -293,7 +295,7 @@ public final class ScreenCreationManager {
 		if (cameraScreen == null || cameraScreen.position() == null) return false;
 
 		Vec3d cameraPos = cameraScreen.position();
-		session.cameraEntity().setPosition(toCameraProxyPos(cameraPos));
+		session.cameraEntity().setPosition(toCameraProxyPos(session.cameraEntity(), cameraPos));
 		return true;
 	}
 
@@ -326,7 +328,7 @@ public final class ScreenCreationManager {
 				finishExitViewMode(client, session, notify);
 				return;
 			}
-			session.cameraEntity().setPosition(toCameraProxyPos(camera.position()));
+			session.cameraEntity().setPosition(toCameraProxyPos(session.cameraEntity(), camera.position()));
 			session.cameraEntity().setYaw(camera.yaw());
 			session.cameraEntity().setPitch(camera.pitch());
 			exitSnapshotPending = true;
@@ -455,8 +457,9 @@ public final class ScreenCreationManager {
 		return false;
 	}
 
-	private static Vec3d toCameraProxyPos(Vec3d cameraEyePos) {
-		return cameraEyePos.add(0.0, -CAMERA_PROXY_BASE_OFFSET, 0.0);
+	private static Vec3d toCameraProxyPos(ArmorStandEntity proxy, Vec3d cameraEyePos) {
+		double eyeOffset = proxy.getEyeY() - proxy.getY();
+		return cameraEyePos.add(0.0, -eyeOffset, 0.0);
 	}
 
 	static BlockPos getSelectionPos1() {
