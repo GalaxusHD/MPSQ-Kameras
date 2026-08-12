@@ -2,7 +2,7 @@ package de.galaxushd.mpsqcamera.mixin.client;
 
 import de.galaxushd.mpsqcamera.ScreenCreationManager;
 import net.minecraft.client.Mouse;
-import net.minecraft.entity.Entity;
+import net.minecraft.client.network.ClientPlayerEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -14,14 +14,16 @@ public final class MouseMixin {
             method = "updateMouse",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/entity/Entity;changeLookDirection(DD)V"
+                    // Mouse.updateMouse invokes the method with its concrete
+                    // ClientPlayerEntity owner, not the inherited Entity owner.
+                    target = "Lnet/minecraft/client/network/ClientPlayerEntity;changeLookDirection(DD)V"
             )
     )
-    private void mpsq$routeLookInput(Entity entity, double cursorDeltaX, double cursorDeltaY) {
+    private void mpsq$routeLookInput(ClientPlayerEntity player, double cursorDeltaX, double cursorDeltaY) {
         if (ScreenCreationManager.isCameraViewActive()) {
             ScreenCreationManager.applyCameraLook(cursorDeltaX, cursorDeltaY);
             return;
         }
-        entity.changeLookDirection(cursorDeltaX, cursorDeltaY);
+        player.changeLookDirection(cursorDeltaX, cursorDeltaY);
     }
 }
