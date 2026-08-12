@@ -42,6 +42,7 @@ public final class RemoteCameraFrameManager {
     private static final Set<UUID> OWN_BODYCAMS = new HashSet<>();
 
     private static UUID providerCamera;
+    private static Runnable snapshotCompleteCallback;
     private static long lastPublishMs;
     private static long lastBodycamRefreshMs;
     private static boolean publishing;
@@ -63,6 +64,17 @@ public final class RemoteCameraFrameManager {
     /** Stops static-camera transmission immediately after leaving the view. */
     public static void stopPublishing() {
         providerCamera = null;
+    }
+
+    /**
+     * Sends one final frame from the camera's saved standard view. The caller
+     * keeps the camera entity active until this callback runs, so no player
+     * hand or HUD can end up in the stored picture.
+     */
+    public static void captureFinalSnapshot(UUID cameraId, Runnable onComplete) {
+        providerCamera = cameraId;
+        snapshotCompleteCallback = onComplete;
+        lastPublishMs = 0L;
     }
 
     public static Identifier texture(UUID cameraId) {
@@ -93,6 +105,7 @@ public final class RemoteCameraFrameManager {
                 image.close();
                 publishing = false;
                 MpsqCameraClient.LOGGER.warn("Kamera-Bild konnte nicht erzeugt werden", exception);
+				finishSnapshot();
                 return;
             }
             image.close();
@@ -111,9 +124,18 @@ public final class RemoteCameraFrameManager {
             CompletableFuture.allOf(uploads).whenComplete((ignored, error) -> {
                 publishing = false;
                 if (error != null) MpsqCameraClient.LOGGER.debug("Kamera-Bild konnte nicht hochgeladen werden", error);
+				finishSnapshot();
             });
         });
     }
+
+	private static void finishSnapshot() {
+		Runnable callback = snapshotCompleteCallback;
+		if (callback == null) return;
+		snapshotCompleteCallback = null;
+		providerCamera = null;
+		MinecraftClient.getInstance().execute(callback);
+	}
 
     private static void refreshMyBodycams() {
         if (!MpsqApiClient.isReady() || bodycamRefreshInFlight) return;
@@ -216,6 +238,7 @@ public final class RemoteCameraFrameManager {
 
     private static void clear() {
         stopPublishing();
+        snapshotCompleteCallback = null;
         TEXTURES.values().forEach(NativeImageBackedTexture::close);
         TEXTURES.clear();
         TEXTURE_IDS.clear();

@@ -48,6 +48,7 @@ public final class ScreenCreationManager {
 	private static KeyBinding hauptMenuKey;
 
 	private static ViewSession activeViewSession;
+	private static boolean exitSnapshotPending;
 
 	private ScreenCreationManager() {}
 
@@ -69,7 +70,12 @@ public final class ScreenCreationManager {
 
 		suppressMovementAndInteraction(client);
 		lockPlayerPosition(client.player, activeViewSession.originPos());
-		updateCameraLookFromMouse(client.player, activeViewSession);
+		// Beim Verlassen wird exakt ein Bild aus der gespeicherten Standard-
+		// blickrichtung aufgenommen. Mausbewegungen duerfen diese Aufnahme nicht
+		// mehr veraendern.
+		if (!exitSnapshotPending) {
+			updateCameraLookFromMouse(client.player, activeViewSession);
+		}
 	}
 
 	/**
@@ -308,9 +314,30 @@ public final class ScreenCreationManager {
 	}
 
 	private static void exitViewMode(MinecraftClient client, boolean notify) {
-		if (activeViewSession == null) return;
+		if (activeViewSession == null || exitSnapshotPending) return;
 		ViewSession session = activeViewSession;
+
+		// For version 1.0 a screen retains one clean image from the saved
+		// camera direction after leaving. Keep the proxy camera active until
+		// WorldRenderEvents captured that one frame.
+		LocalCameraStore.find(session.cameraId).ifPresentOrElse(camera -> {
+			if (camera.position() == null) {
+				finishExitViewMode(client, session, notify);
+				return;
+			}
+			session.cameraEntity().setPosition(camera.position());
+			session.cameraEntity().setYaw(camera.yaw());
+			session.cameraEntity().setPitch(camera.pitch());
+			exitSnapshotPending = true;
+			RemoteCameraFrameManager.captureFinalSnapshot(session.cameraId,
+					() -> finishExitViewMode(client, session, notify));
+		}, () -> finishExitViewMode(client, session, notify));
+	}
+
+	private static void finishExitViewMode(MinecraftClient client, ViewSession session, boolean notify) {
+		if (activeViewSession != session) return;
 		activeViewSession = null;
+		exitSnapshotPending = false;
 		RemoteCameraFrameManager.stopPublishing();
 
 		if (client.options != null) {
