@@ -193,7 +193,14 @@ public final class RemoteCameraFrameManager {
                 .thenCompose(RemoteCameraFrameManager::downloadFrame)
                 .thenAccept(image -> MinecraftClient.getInstance().execute(() -> install(cameraId, image)))
                 .exceptionally(error -> {
-                    MinecraftClient.getInstance().execute(() -> removeTexture(cameraId));
+                    // A static camera intentionally stops uploading after its
+                    // final snapshot. Keep an already received image visible
+                    // when a later poll briefly reports it as offline.
+                    MinecraftClient.getInstance().execute(() -> {
+                        if (!TEXTURE_IDS.containsKey(cameraId)) {
+                            removeTexture(cameraId);
+                        }
+                    });
                     return null;
                 });
     }

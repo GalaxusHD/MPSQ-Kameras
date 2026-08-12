@@ -33,7 +33,7 @@ public final class ScreenCreationManager {
 	private static final double CAMERA_LOAD_RANGE = 48.0;
 	private static final long VIEW_ENTER_COOLDOWN_MS = 400L;
 	private static final long OFFLINE_HINT_INTERVAL_MS = 1000L;
-	private static final double CAMERA_EYE_HEIGHT = 1.62;
+	private static final double CAMERA_PROXY_BASE_OFFSET = 1.55;
 
 	private static boolean wasUsePressedLastTick = false;
 	private static boolean wasEscPressedLastTick = false;
@@ -74,24 +74,19 @@ public final class ScreenCreationManager {
 		// blickrichtung aufgenommen. Mausbewegungen duerfen diese Aufnahme nicht
 		// mehr veraendern.
 		if (!exitSnapshotPending) {
-			updateCameraLookFromMouse(client.player, activeViewSession);
+			syncCameraLookWithPlayer(client.player, activeViewSession);
 		}
 	}
 
 	/**
-	 * Minecraft sends mouse movement to the player, not to our invisible camera
-	 * entity. Transfer only the relative movement. This retains the saved camera
-	 * direction on entry and prevents snapping back to the player's body yaw.
+	 * Minecraft sends mouse movement to the player. The invisible camera proxy
+	 * copies that exact rotation every tick, while keeping its saved position.
+	 * This avoids accumulating relative mouse deltas, which caused spinning and
+	 * an offset view after entering a camera.
 	 */
-	private static void updateCameraLookFromMouse(ClientPlayerEntity player, ViewSession session) {
-		float yawDelta = MathHelper.wrapDegrees(player.getYaw() - session.lastPlayerYaw);
-		float pitchDelta = player.getPitch() - session.lastPlayerPitch;
-		if (yawDelta != 0.0f || pitchDelta != 0.0f) {
-			session.cameraEntity.setYaw(MathHelper.wrapDegrees(session.cameraEntity.getYaw() + yawDelta));
-			session.cameraEntity.setPitch(MathHelper.clamp(session.cameraEntity.getPitch() + pitchDelta, -90.0f, 90.0f));
-		}
-		session.lastPlayerYaw = player.getYaw();
-		session.lastPlayerPitch = player.getPitch();
+	private static void syncCameraLookWithPlayer(ClientPlayerEntity player, ViewSession session) {
+		session.cameraEntity.setYaw(player.getYaw());
+		session.cameraEntity.setPitch(MathHelper.clamp(player.getPitch(), -90.0f, 90.0f));
 	}
 
 	private static void onEndTick(MinecraftClient client) {
@@ -157,13 +152,13 @@ public final class ScreenCreationManager {
 		if (activeViewSession != null && activeViewSession.sourceAnchor() != null) {
 			LocalCameraStore.find(camera).ifPresent(data -> {
 				if (data.position() != null) {
-					activeViewSession.cameraEntity().setPosition(data.position());
+					activeViewSession.cameraEntity().setPosition(toCameraProxyPos(data.position()));
 					activeViewSession.cameraEntity().setYaw(data.yaw());
 					activeViewSession.cameraEntity().setPitch(data.pitch());
 					MinecraftClient client = MinecraftClient.getInstance();
 					if (client.player != null) {
-						activeViewSession.lastPlayerYaw = client.player.getYaw();
-						activeViewSession.lastPlayerPitch = client.player.getPitch();
+						client.player.setYaw(data.yaw());
+						client.player.setPitch(data.pitch());
 					}
 				}
 			});
@@ -229,7 +224,8 @@ public final class ScreenCreationManager {
 			return;
 		}
 
-		ArmorStandEntity cameraEntity = new ArmorStandEntity(client.world, cameraPos.x, cameraPos.y, cameraPos.z);
+		Vec3d proxyPos = toCameraProxyPos(cameraPos);
+		ArmorStandEntity cameraEntity = new ArmorStandEntity(client.world, proxyPos.x, proxyPos.y, proxyPos.z);
 		cameraEntity.setNoGravity(true);
 		cameraEntity.setInvisible(true);
 		cameraEntity.setYaw(cameraScreen.yaw());
@@ -237,6 +233,11 @@ public final class ScreenCreationManager {
 
 		Entity previousCamera = client.getCameraEntity();
 		Perspective previousPerspective = client.options.getPerspective();
+
+		float previousPlayerYaw = player.getYaw();
+		float previousPlayerPitch = player.getPitch();
+		player.setYaw(cameraScreen.yaw());
+		player.setPitch(cameraScreen.pitch());
 
 		activeViewSession = new ViewSession(
 				screen.pos1().toImmutable(),
@@ -246,8 +247,8 @@ public final class ScreenCreationManager {
 				previousCamera,
 				previousPerspective,
 				cameraEntity,
-				player.getYaw(),
-				player.getPitch()
+				previousPlayerYaw,
+				previousPlayerPitch
 		);
 
 		client.setCameraEntity(cameraEntity);
@@ -292,7 +293,7 @@ public final class ScreenCreationManager {
 		if (cameraScreen == null || cameraScreen.position() == null) return false;
 
 		Vec3d cameraPos = cameraScreen.position();
-		session.cameraEntity().setPosition(cameraPos);
+		session.cameraEntity().setPosition(toCameraProxyPos(cameraPos));
 		return true;
 	}
 
@@ -325,7 +326,7 @@ public final class ScreenCreationManager {
 				finishExitViewMode(client, session, notify);
 				return;
 			}
-			session.cameraEntity().setPosition(camera.position());
+			session.cameraEntity().setPosition(toCameraProxyPos(camera.position()));
 			session.cameraEntity().setYaw(camera.yaw());
 			session.cameraEntity().setPitch(camera.pitch());
 			exitSnapshotPending = true;
@@ -349,6 +350,8 @@ public final class ScreenCreationManager {
 
 		if (client.player != null) {
 			lockPlayerPosition(client.player, session.originPos());
+			client.player.setYaw(session.previousPlayerYaw());
+			client.player.setPitch(session.previousPlayerPitch());
 			if (notify) {
 				client.player.sendMessage(Text.translatable("status.mpsqcamera.view_exit"), true);
 			}
@@ -452,8 +455,8 @@ public final class ScreenCreationManager {
 		return false;
 	}
 
-	private static Vec3d toCameraPos(Vec3d basePos) {
-		return basePos.add(0.0, CAMERA_EYE_HEIGHT, 0.0);
+	private static Vec3d toCameraProxyPos(Vec3d cameraEyePos) {
+		return cameraEyePos.add(0.0, -CAMERA_PROXY_BASE_OFFSET, 0.0);
 	}
 
 	static BlockPos getSelectionPos1() {
@@ -530,13 +533,13 @@ public final class ScreenCreationManager {
 		private final Entity previousCameraEntity;
 		private final Perspective previousPerspective;
 		private final ArmorStandEntity cameraEntity;
-		private float lastPlayerYaw;
-		private float lastPlayerPitch;
+		private final float previousPlayerYaw;
+		private final float previousPlayerPitch;
 
 		private ViewSession(BlockPos sourceAnchor, UUID cameraId, Vec3d originPos,
 				RegistryKey<World> originDimension, Entity previousCameraEntity,
 				Perspective previousPerspective, ArmorStandEntity cameraEntity,
-				float lastPlayerYaw, float lastPlayerPitch) {
+				float previousPlayerYaw, float previousPlayerPitch) {
 			this.sourceAnchor = sourceAnchor;
 			this.cameraId = cameraId;
 			this.originPos = originPos;
@@ -544,8 +547,8 @@ public final class ScreenCreationManager {
 			this.previousCameraEntity = previousCameraEntity;
 			this.previousPerspective = previousPerspective;
 			this.cameraEntity = cameraEntity;
-			this.lastPlayerYaw = lastPlayerYaw;
-			this.lastPlayerPitch = lastPlayerPitch;
+			this.previousPlayerYaw = previousPlayerYaw;
+			this.previousPlayerPitch = previousPlayerPitch;
 		}
 
 		private BlockPos sourceAnchor() { return sourceAnchor; }
@@ -554,5 +557,7 @@ public final class ScreenCreationManager {
 		private Entity previousCameraEntity() { return previousCameraEntity; }
 		private Perspective previousPerspective() { return previousPerspective; }
 		private ArmorStandEntity cameraEntity() { return cameraEntity; }
+		private float previousPlayerYaw() { return previousPlayerYaw; }
+		private float previousPlayerPitch() { return previousPlayerPitch; }
 	}
 }
