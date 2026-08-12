@@ -2,28 +2,26 @@ package de.galaxushd.mpsqcamera.mixin.client;
 
 import de.galaxushd.mpsqcamera.ScreenCreationManager;
 import net.minecraft.client.Mouse;
+import net.minecraft.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
-/** Keeps the client-only camera proxy in sync with Minecraft's mouse update. */
+/** Sends mouse input either to the player or to the active client-only camera. */
 @Mixin(Mouse.class)
 public final class MouseMixin {
-    @Unique private float mpsq$yawBeforeMouse;
-    @Unique private float mpsq$pitchBeforeMouse;
-
-    @Inject(method = "updateMouse", at = @At("HEAD"))
-    private void mpsq$rememberLookBeforeMouse(double timeDelta, CallbackInfo ci) {
-        var player = net.minecraft.client.MinecraftClient.getInstance().player;
-        if (player == null) return;
-        mpsq$yawBeforeMouse = player.getYaw();
-        mpsq$pitchBeforeMouse = player.getPitch();
-    }
-
-    @Inject(method = "updateMouse", at = @At("TAIL"))
-    private void mpsq$applyCameraLook(double timeDelta, CallbackInfo ci) {
-        ScreenCreationManager.onMouseLookUpdated(mpsq$yawBeforeMouse, mpsq$pitchBeforeMouse);
+    @Redirect(
+            method = "updateMouse",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/entity/Entity;changeLookDirection(DD)V"
+            )
+    )
+    private void mpsq$routeLookInput(Entity entity, double cursorDeltaX, double cursorDeltaY) {
+        if (ScreenCreationManager.isCameraViewActive()) {
+            ScreenCreationManager.applyCameraLook(cursorDeltaX, cursorDeltaY);
+            return;
+        }
+        entity.changeLookDirection(cursorDeltaX, cursorDeltaY);
     }
 }
