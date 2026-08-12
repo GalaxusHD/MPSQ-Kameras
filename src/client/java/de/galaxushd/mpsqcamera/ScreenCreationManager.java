@@ -21,7 +21,6 @@ import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.lwjgl.glfw.GLFW;
@@ -75,25 +74,20 @@ public final class ScreenCreationManager {
 		client.player.setVelocity(Vec3d.ZERO);
 	}
 
+	/** True while Minecraft's mouse input belongs to the remote camera. */
+	public static boolean isCameraViewActive() {
+		return activeViewSession != null && !exitSnapshotPending;
+	}
+
 	/**
-	 * Called directly after Minecraft has applied a mouse movement. Only the
-	 * mouse delta is transferred to the proxy; a server correction of the real
-	 * player must never pull the remote camera back to the player's body view.
+	 * Receives Minecraft's already sensitivity-adjusted mouse deltas directly.
+	 * The real player is deliberately never changed here: changing their look
+	 * first and restoring it afterwards causes the server/client correction loop
+	 * that produced the visible flickering.
 	 */
-	public static void onMouseLookUpdated(float yawBeforeMouse, float pitchBeforeMouse) {
-		if (activeViewSession == null || exitSnapshotPending) return;
-		MinecraftClient client = MinecraftClient.getInstance();
-		if (client.player == null) return;
-
-		float yawDelta = MathHelper.wrapDegrees(client.player.getYaw() - yawBeforeMouse);
-		float pitchDelta = client.player.getPitch() - pitchBeforeMouse;
-		ArmorStandEntity proxy = activeViewSession.cameraEntity();
-		proxy.setYaw(MathHelper.wrapDegrees(proxy.getYaw() + yawDelta));
-		proxy.setPitch(MathHelper.clamp(proxy.getPitch() + pitchDelta, -90.0f, 90.0f));
-
-		// The player may keep their own rotation. Resetting it after every mouse
-		// event fights Minecraft's mouse handling and is the source of visible
-		// view snaps. Only the proxy's rotation is used for the remote view.
+	public static void applyCameraLook(double cursorDeltaX, double cursorDeltaY) {
+		if (!isCameraViewActive()) return;
+		activeViewSession.cameraEntity().changeLookDirection(cursorDeltaX, cursorDeltaY);
 	}
 
 	private static void onEndTick(MinecraftClient client) {
