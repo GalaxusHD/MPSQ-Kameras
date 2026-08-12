@@ -32,6 +32,7 @@ public final class ScreenCreationManager {
 	private static final double CAMERA_LOAD_RANGE = 48.0;
 	private static final long VIEW_ENTER_COOLDOWN_MS = 400L;
 	private static final long OFFLINE_HINT_INTERVAL_MS = 1000L;
+	private static int nextCameraProxyEntityId = -1_900_000_000;
 
 	private static boolean wasUsePressedLastTick = false;
 	private static boolean wasEscPressedLastTick = false;
@@ -153,9 +154,7 @@ public final class ScreenCreationManager {
 		if (activeViewSession != null && activeViewSession.sourceAnchor() != null) {
 			LocalCameraStore.find(camera).ifPresent(data -> {
 				if (data.position() != null) {
-					activeViewSession.cameraEntity().setPosition(toCameraProxyPos(activeViewSession.cameraEntity(), data.position()));
-					activeViewSession.cameraEntity().setYaw(data.yaw());
-					activeViewSession.cameraEntity().setPitch(data.pitch());
+					placeCameraProxy(activeViewSession.cameraEntity(), data.position(), data.yaw(), data.pitch());
 				}
 			});
 			RemoteCameraFrameManager.startPublishing(camera);
@@ -224,11 +223,14 @@ public final class ScreenCreationManager {
 		// Augenhoehe des unsichtbaren Proxis wird deshalb nach dem Erzeugen
 		// dynamisch ausgeglichen, statt durch einen festen Wert geschaetzt.
 		ArmorStandEntity cameraEntity = new ArmorStandEntity(client.world, cameraPos.x, cameraPos.y, cameraPos.z);
-		cameraEntity.setPosition(toCameraProxyPos(cameraEntity, cameraPos));
+		cameraEntity.setId(nextCameraProxyEntityId++);
 		cameraEntity.setNoGravity(true);
 		cameraEntity.setInvisible(true);
-		cameraEntity.setYaw(cameraScreen.yaw());
-		cameraEntity.setPitch(cameraScreen.pitch());
+		placeCameraProxy(cameraEntity, cameraPos, cameraScreen.yaw(), cameraScreen.pitch());
+		// A camera entity must be present in the client world. An untracked entity
+		// has no stable previous render position, which makes Minecraft interpolate
+		// the view between unrelated places and causes the visible flicker.
+		client.world.addEntity(cameraEntity);
 
 		Entity previousCamera = client.getCameraEntity();
 		Perspective previousPerspective = client.options.getPerspective();
@@ -314,9 +316,7 @@ public final class ScreenCreationManager {
 				finishExitViewMode(client, session, notify);
 				return;
 			}
-			session.cameraEntity().setPosition(toCameraProxyPos(session.cameraEntity(), camera.position()));
-			session.cameraEntity().setYaw(camera.yaw());
-			session.cameraEntity().setPitch(camera.pitch());
+			placeCameraProxy(session.cameraEntity(), camera.position(), camera.yaw(), camera.pitch());
 			exitSnapshotPending = true;
 			RemoteCameraFrameManager.captureFinalSnapshot(session.cameraId,
 					() -> finishExitViewMode(client, session, notify));
@@ -336,6 +336,7 @@ public final class ScreenCreationManager {
 
 		Entity fallbackCamera = client.player == null ? null : client.player;
 		client.setCameraEntity(session.previousCameraEntity() != null ? session.previousCameraEntity() : fallbackCamera);
+		session.cameraEntity().discard();
 
 		if (client.player != null) {
 			lockPlayerPosition(client.player, session.originPos());
@@ -445,6 +446,11 @@ public final class ScreenCreationManager {
 	private static Vec3d toCameraProxyPos(ArmorStandEntity proxy, Vec3d cameraEyePos) {
 		double eyeOffset = proxy.getEyeY() - proxy.getY();
 		return cameraEyePos.add(0.0, -eyeOffset, 0.0);
+	}
+
+	private static void placeCameraProxy(ArmorStandEntity proxy, Vec3d cameraEyePos, float yaw, float pitch) {
+		Vec3d bodyPos = toCameraProxyPos(proxy, cameraEyePos);
+		proxy.refreshPositionAndAngles(bodyPos.x, bodyPos.y, bodyPos.z, yaw, pitch);
 	}
 
 	static BlockPos getSelectionPos1() {
