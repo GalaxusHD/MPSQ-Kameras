@@ -21,6 +21,7 @@ import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.lwjgl.glfw.GLFW;
@@ -73,6 +74,7 @@ public final class ScreenCreationManager {
 		// client camera snap back or spin. The disabled movement keys and zero
 		// velocity keep the body in place without fighting the server.
 		client.player.setVelocity(Vec3d.ZERO);
+		activeViewSession.applyViewRotation();
 	}
 
 	/** True while Minecraft's mouse input belongs to the remote camera. */
@@ -88,7 +90,7 @@ public final class ScreenCreationManager {
 	 */
 	public static void applyCameraLook(double cursorDeltaX, double cursorDeltaY) {
 		if (!isCameraViewActive()) return;
-		activeViewSession.cameraEntity().changeLookDirection(cursorDeltaX, cursorDeltaY);
+		activeViewSession.applyMouseLook(cursorDeltaX, cursorDeltaY);
 	}
 
 	private static void onEndTick(MinecraftClient client) {
@@ -155,6 +157,7 @@ public final class ScreenCreationManager {
 			LocalCameraStore.find(camera).ifPresent(data -> {
 				if (data.position() != null) {
 					placeCameraProxy(activeViewSession.cameraEntity(), data.position(), data.yaw(), data.pitch());
+					activeViewSession.setViewRotation(data.yaw(), data.pitch());
 				}
 			});
 			RemoteCameraFrameManager.startPublishing(camera);
@@ -242,7 +245,9 @@ public final class ScreenCreationManager {
 				client.world.getRegistryKey(),
 				previousCamera,
 				previousPerspective,
-				cameraEntity
+				cameraEntity,
+				cameraScreen.yaw(),
+				cameraScreen.pitch()
 		);
 
 		client.setCameraEntity(cameraEntity);
@@ -527,10 +532,13 @@ public final class ScreenCreationManager {
 		private final Entity previousCameraEntity;
 		private final Perspective previousPerspective;
 		private final ArmorStandEntity cameraEntity;
+		private float viewYaw;
+		private float viewPitch;
 
 		private ViewSession(BlockPos sourceAnchor, UUID cameraId, Vec3d originPos,
 				RegistryKey<World> originDimension, Entity previousCameraEntity,
-				Perspective previousPerspective, ArmorStandEntity cameraEntity) {
+				Perspective previousPerspective, ArmorStandEntity cameraEntity,
+				float viewYaw, float viewPitch) {
 			this.sourceAnchor = sourceAnchor;
 			this.cameraId = cameraId;
 			this.originPos = originPos;
@@ -538,6 +546,8 @@ public final class ScreenCreationManager {
 			this.previousCameraEntity = previousCameraEntity;
 			this.previousPerspective = previousPerspective;
 			this.cameraEntity = cameraEntity;
+			this.viewYaw = viewYaw;
+			this.viewPitch = viewPitch;
 		}
 
 		private BlockPos sourceAnchor() { return sourceAnchor; }
@@ -546,5 +556,24 @@ public final class ScreenCreationManager {
 		private Entity previousCameraEntity() { return previousCameraEntity; }
 		private Perspective previousPerspective() { return previousPerspective; }
 		private ArmorStandEntity cameraEntity() { return cameraEntity; }
+
+		private void applyMouseLook(double cursorDeltaX, double cursorDeltaY) {
+			// Matches Minecraft's normal Entity.changeLookDirection scale, but
+			// retains the values independently from ArmorStandEntity's own tick.
+			viewYaw = MathHelper.wrapDegrees(viewYaw + (float) cursorDeltaX * 0.15F);
+			viewPitch = MathHelper.clamp(viewPitch + (float) cursorDeltaY * 0.15F, -90.0F, 90.0F);
+			applyViewRotation();
+		}
+
+		private void setViewRotation(float yaw, float pitch) {
+			viewYaw = yaw;
+			viewPitch = MathHelper.clamp(pitch, -90.0F, 90.0F);
+			applyViewRotation();
+		}
+
+		private void applyViewRotation() {
+			cameraEntity.setYaw(viewYaw);
+			cameraEntity.setPitch(viewPitch);
+		}
 	}
 }
