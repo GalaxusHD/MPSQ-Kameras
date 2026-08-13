@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.text.Text;
 
 /** Polls the small shared request inbox while a player is in a world. */
 public final class BodycamRequestManager {
