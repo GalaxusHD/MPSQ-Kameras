@@ -200,28 +200,34 @@ public final class ScreenRenderer {
         topRight = topRight.add(frameOffset);
         topLeft = topLeft.add(frameOffset);
 
-        coloredQuad(matrices, vertices,
+        // getEntityCutoutNoCull(texture) above can flush the previously
+        // obtained debug-quad buffer.  Never reuse that stale consumer for
+        // the frame, otherwise a second client can hit "Not building!" while
+        // joining a world with an already visible screen.
+        VertexConsumer frameVertices = consumers.getBuffer(RenderLayer.getDebugQuads());
+
+        coloredQuad(matrices, frameVertices,
                 bottomLeft,
                 bottomRight,
                 bottomRight.add(verticalBorder),
                 bottomLeft.add(verticalBorder),
                 FRAME_RED, FRAME_GREEN, FRAME_BLUE);
 
-        coloredQuad(matrices, vertices,
+        coloredQuad(matrices, frameVertices,
                 topLeft.subtract(verticalBorder),
                 topRight.subtract(verticalBorder),
                 topRight,
                 topLeft,
                 FRAME_RED, FRAME_GREEN, FRAME_BLUE);
 
-        coloredQuad(matrices, vertices,
+        coloredQuad(matrices, frameVertices,
                 bottomLeft,
                 bottomLeft.add(horizontalBorder),
                 topLeft.add(horizontalBorder),
                 topLeft,
                 FRAME_RED, FRAME_GREEN, FRAME_BLUE);
 
-        coloredQuad(matrices, vertices,
+        coloredQuad(matrices, frameVertices,
                 bottomRight.subtract(horizontalBorder),
                 bottomRight,
                 topRight,
