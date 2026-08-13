@@ -49,7 +49,12 @@ public final class BildschirmDetailScreen extends Screen {
         activationCode = ScreenAccessStore.code(screenId);
 
         int x = width / 2 - BUTTON_WIDTH / 2;
-        int y = CONTENT_TOP - scrollOffset;
+        // Keep the actual content height separate from its visible, scrolled
+        // position.  Calculating the scroll limit from an already shifted Y
+        // coordinate made the limit shrink on every scroll and prevented
+        // scrolling back up.
+        int contentY = CONTENT_TOP;
+        int y = contentY - scrollOffset;
 
         if (isCreator) {
             addDrawableChild(ButtonWidget.builder(
@@ -59,6 +64,7 @@ public final class BildschirmDetailScreen extends Screen {
                     .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT)
                     .build());
             y += ROW_GAP;
+            contentY += ROW_GAP;
 
             addDrawableChild(ButtonWidget.builder(
                             Text.literal("Umbenennen..."),
@@ -67,6 +73,7 @@ public final class BildschirmDetailScreen extends Screen {
                     .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT)
                     .build());
             y += ROW_GAP;
+            contentY += ROW_GAP;
 
             if (cameraMode) {
                 addDrawableChild(ButtonWidget.builder(
@@ -76,8 +83,10 @@ public final class BildschirmDetailScreen extends Screen {
                         .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT)
                         .build());
                 y += ROW_GAP;
+                contentY += ROW_GAP;
             } else {
                 y = addCinemaControls(x, y);
+                contentY += ROW_GAP * 3;
             }
 
             addDrawableChild(ButtonWidget.builder(
@@ -87,6 +96,7 @@ public final class BildschirmDetailScreen extends Screen {
                     .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT)
                     .build());
             y += ROW_GAP;
+            contentY += ROW_GAP;
 
             addDrawableChild(ButtonWidget.builder(
                             Text.literal("Berechtigungen..."),
@@ -95,6 +105,7 @@ public final class BildschirmDetailScreen extends Screen {
                     .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT)
                     .build());
             y += ROW_GAP;
+            contentY += ROW_GAP;
 
             addDrawableChild(ButtonWidget.builder(
                             Text.literal("Gruppieren..."),
@@ -103,6 +114,7 @@ public final class BildschirmDetailScreen extends Screen {
                     .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT)
                     .build());
             y += ROW_GAP;
+            contentY += ROW_GAP;
 
             if (ScreenAccessStore.inGroup(screenId)) {
                 addDrawableChild(ButtonWidget.builder(
@@ -112,6 +124,7 @@ public final class BildschirmDetailScreen extends Screen {
                         .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT)
                         .build());
                 y += ROW_GAP;
+                contentY += ROW_GAP;
             }
 
             addDrawableChild(ButtonWidget.builder(
@@ -121,6 +134,7 @@ public final class BildschirmDetailScreen extends Screen {
                     .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT)
                     .build());
             y += ROW_GAP;
+            contentY += ROW_GAP;
         } else if (!cameraMode) {
             CinemaPlaybackStore.PlaybackState state = CinemaPlaybackStore.get(screenId);
 
@@ -132,9 +146,10 @@ public final class BildschirmDetailScreen extends Screen {
                     .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT)
                     .build());
             y += ROW_GAP;
+            contentY += ROW_GAP;
         }
 
-        maxScrollOffset = Math.max(0, y - (height - CONTENT_BOTTOM));
+        maxScrollOffset = Math.max(0, contentY - (height - CONTENT_BOTTOM));
         scrollOffset = Math.min(scrollOffset, maxScrollOffset);
 
         addDrawableChild(ButtonWidget.builder(
