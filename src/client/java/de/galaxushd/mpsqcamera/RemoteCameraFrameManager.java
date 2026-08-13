@@ -22,6 +22,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -36,9 +37,12 @@ public final class RemoteCameraFrameManager {
     private static final int STREAM_WIDTH = 480;
     private static final int STREAM_HEIGHT = 270;
     private static final HttpClient HTTP = HttpClient.newHttpClient();
-    private static final Map<UUID, Identifier> TEXTURE_IDS = new HashMap<>();
-    private static final Map<UUID, NativeImageBackedTexture> TEXTURES = new HashMap<>();
-    private static final Map<UUID, Long> LAST_REQUEST_MS = new HashMap<>();
+    private static final Map<UUID, Identifier> TEXTURE_IDS = new ConcurrentHashMap<>();
+    private static final Map<UUID, NativeImageBackedTexture> TEXTURES = new ConcurrentHashMap<>();
+    private static final Map<UUID, Long> LAST_REQUEST_MS = new ConcurrentHashMap<>();
+    private static final Map<UUID, String> FRAME_URLS = new ConcurrentHashMap<>();
+    private static final Map<UUID, Long> FRAME_URL_EXPIRY_MS = new ConcurrentHashMap<>();
+    private static final Set<UUID> URL_REQUESTS_IN_FLIGHT = ConcurrentHashMap.newKeySet();
     private static final Set<UUID> OWN_BODYCAMS = new HashSet<>();
 
     private static UUID providerCamera;
@@ -189,30 +193,49 @@ public final class RemoteCameraFrameManager {
         long now = System.currentTimeMillis();
         if (now - LAST_REQUEST_MS.getOrDefault(cameraId, 0L) < FRAME_INTERVAL_MS) return;
         LAST_REQUEST_MS.put(cameraId, now);
+        String frameUrl = FRAME_URLS.get(cameraId);
+        if (frameUrl != null && now < FRAME_URL_EXPIRY_MS.getOrDefault(cameraId, 0L)) {
+            downloadFrame(frameUrl).thenAccept(image -> MinecraftClient.getInstance().execute(() -> install(cameraId, image)))
+                    .exceptionally(error -> { invalidateFrameUrl(cameraId); return null; });
+            return;
+        }
+        if (!URL_REQUESTS_IN_FLIGHT.add(cameraId)) return;
         MpsqApiClient.get("/cameras/" + cameraId + "/frame")
-                .thenCompose(RemoteCameraFrameManager::downloadFrame)
+                .thenCompose(result -> rememberAndDownload(cameraId, result))
                 .thenAccept(image -> MinecraftClient.getInstance().execute(() -> install(cameraId, image)))
                 .exceptionally(error -> {
                     // A static camera intentionally stops uploading after its
                     // final snapshot. Keep an already received image visible
                     // when a later poll briefly reports it as offline.
                     MinecraftClient.getInstance().execute(() -> {
-                        if (!TEXTURE_IDS.containsKey(cameraId)) {
-                            removeTexture(cameraId);
-                        }
+                        if (!TEXTURE_IDS.containsKey(cameraId)) removeTexture(cameraId);
                     });
                     return null;
-                });
+                }).whenComplete((ignored, error) -> URL_REQUESTS_IN_FLIGHT.remove(cameraId));
     }
 
-    private static CompletableFuture<NativeImage> downloadFrame(JsonElement result) {
+    private static CompletableFuture<NativeImage> rememberAndDownload(UUID cameraId, JsonElement result) {
         if (result == null || !result.isJsonObject() || !result.getAsJsonObject().has("url")) {
-            return CompletableFuture.failedFuture(new IOException("Kamera ist offline"));
+            throw new IllegalStateException("Kamera ist offline");
         }
         String url = result.getAsJsonObject().get("url").getAsString();
-        HttpRequest request = HttpRequest.newBuilder(URI.create(url)).GET().build();
+        long validForSeconds = result.getAsJsonObject().has("expiresIn")
+                ? result.getAsJsonObject().get("expiresIn").getAsLong() : 60L;
+        // Renew before the R2 signature reaches its expiry.
+        FRAME_URLS.put(cameraId, url);
+        FRAME_URL_EXPIRY_MS.put(cameraId, System.currentTimeMillis() + Math.max(1L, validForSeconds - 60L) * 1000L);
+        return downloadFrame(url);
+    }
+
+    private static CompletableFuture<NativeImage> downloadFrame(String url) {
+        HttpRequest request = HttpRequest.newBuilder(URI.create(url)).header("Cache-Control", "no-cache").GET().build();
         return HTTP.sendAsync(request, HttpResponse.BodyHandlers.ofByteArray())
-                .thenApply(HttpResponse::body)
+                .thenApply(response -> {
+                    if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                        throw new IllegalStateException("Kamera-Bild konnte nicht geladen werden: " + response.statusCode());
+                    }
+                    return response.body();
+                })
                 .thenApply(bytes -> {
                     try {
                         return NativeImage.read(new ByteArrayInputStream(bytes));
@@ -220,6 +243,11 @@ public final class RemoteCameraFrameManager {
                         throw new IllegalStateException(exception);
                     }
                 });
+    }
+
+    private static void invalidateFrameUrl(UUID cameraId) {
+        FRAME_URLS.remove(cameraId);
+        FRAME_URL_EXPIRY_MS.remove(cameraId);
     }
 
     private static void install(UUID cameraId, NativeImage image) {
@@ -250,6 +278,9 @@ public final class RemoteCameraFrameManager {
         TEXTURES.clear();
         TEXTURE_IDS.clear();
         LAST_REQUEST_MS.clear();
+        FRAME_URLS.clear();
+        FRAME_URL_EXPIRY_MS.clear();
+        URL_REQUESTS_IN_FLIGHT.clear();
         OWN_BODYCAMS.clear();
     }
 }
