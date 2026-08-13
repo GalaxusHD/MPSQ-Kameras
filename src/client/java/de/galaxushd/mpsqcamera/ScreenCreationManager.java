@@ -456,6 +456,17 @@ public final class ScreenCreationManager {
 	private static void placeCameraProxy(ArmorStandEntity proxy, Vec3d cameraEyePos, float yaw, float pitch) {
 		Vec3d bodyPos = toCameraProxyPos(proxy, cameraEyePos);
 		proxy.refreshPositionAndAngles(bodyPos.x, bodyPos.y, bodyPos.z, yaw, pitch);
+		applyProxyRotation(proxy, yaw, pitch);
+	}
+
+	private static void applyProxyRotation(ArmorStandEntity proxy, float yaw, float pitch) {
+		proxy.setYaw(yaw);
+		proxy.setPitch(pitch);
+		// Armor stands keep body and head yaw separately. Minecraft's camera
+		// follows the head direction, so all three values must agree for a full
+		// horizontal (green axis) rotation.
+		proxy.setBodyYaw(yaw);
+		proxy.setHeadYaw(yaw);
 	}
 
 	static BlockPos getSelectionPos1() {
@@ -572,8 +583,7 @@ public final class ScreenCreationManager {
 		}
 
 		private void applyViewRotation() {
-			cameraEntity.setYaw(viewYaw);
-			cameraEntity.setPitch(viewPitch);
+			applyProxyRotation(cameraEntity, viewYaw, viewPitch);
 		}
 	}
 }
