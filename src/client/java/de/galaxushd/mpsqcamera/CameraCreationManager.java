@@ -6,7 +6,9 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.text.Text;
+import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.Vec3d;
 import org.lwjgl.glfw.GLFW;
 
@@ -26,6 +28,20 @@ public final class CameraCreationManager {
     private static void tick(MinecraftClient client) {
         while (createCameraKey.wasPressed()) {
             if (client.player == null || client.world == null || client.currentScreen != null) return;
+
+            // The key binding itself respects the player's configured camera
+            // key. The sneak key is read from Minecraft's options as well, so
+            // Shift+C is only the default, not a hard-coded combination.
+            if (client.options.sneakKey.isPressed()) {
+                if (client.crosshairTarget instanceof EntityHitResult hit
+                        && hit.getEntity() instanceof PlayerEntity target
+                        && client.player.squaredDistanceTo(target) <= 9.0D) {
+                    BodycamRequestManager.request(client, target);
+                } else {
+                    client.player.sendMessage(Text.literal("Sieh einen Spieler aus Schlagreichweite an."), true);
+                }
+                continue;
+            }
             client.setScreen(new CameraCreateScreen());
         }
     }

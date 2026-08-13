@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.entity.player.PlayerEntity;
 
 /** Polls the small shared request inbox while a player is in a world. */
 public final class BodycamRequestManager {
@@ -14,6 +15,26 @@ public final class BodycamRequestManager {
 
     public static void initialize() {
         ClientTickEvents.END_CLIENT_TICK.register(BodycamRequestManager::tick);
+    }
+
+    /** Sends a bodycam request for the player currently looked at by the requester. */
+    public static void request(MinecraftClient client, PlayerEntity target) {
+        if (client.player == null || target == client.player) return;
+        String playerName = target.getName().getString().trim();
+        if (playerName.isBlank()) return;
+
+        JsonObject body = new JsonObject();
+        body.addProperty("targetDisplayName", playerName);
+        MpsqApiClient.post("/bodycam-requests", body).whenComplete((ignored, error) -> client.execute(() -> {
+            if (client.player == null) return;
+            if (error == null) {
+                client.player.sendMessage(Text.translatable("gui.mpsqcamera.bodycam.sent", playerName), true);
+                return;
+            }
+            Throwable cause = error.getCause() == null ? error : error.getCause();
+            String message = cause.getMessage();
+            client.player.sendMessage(Text.literal(message == null ? "Bodycam-Anfrage konnte nicht gesendet werden." : message), true);
+        }));
     }
 
     private static void tick(MinecraftClient client) {

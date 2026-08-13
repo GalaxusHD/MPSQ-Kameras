@@ -1,10 +1,13 @@
 package de.galaxushd.mpsqcamera;
 
+import com.google.gson.JsonObject;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ConfirmScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.text.Text;
+import net.minecraft.util.hit.EntityHitResult;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -27,6 +30,11 @@ public final class CameraListScreen extends Screen {
     }
 
     @Override protected void init() {
+        // A bodycam may have been accepted while this client was not in the
+        // menu. Refresh once whenever the list opens so it appears immediately.
+        MpsqApiClient.refreshCameras();
+        addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.bodycam.request"), b -> requestBodycam())
+                .dimensions(width / 2 - 140, 54, 280, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.back"), b -> client.setScreen(parent))
                 .dimensions(width / 2 - 75, height - 36, 150, 20).build());
         clampScroll();
@@ -78,6 +86,11 @@ public final class CameraListScreen extends Screen {
         return super.keyPressed(key, scanCode, modifiers);
     }
     private void toggle(UUID id) { if (!selected.add(id)) selected.remove(id); }
+    private void requestBodycam() {
+        if (client == null || client.player == null || !(client.crosshairTarget instanceof EntityHitResult hit)
+                || !(hit.getEntity() instanceof PlayerEntity target)) return;
+        BodycamRequestManager.request(client, target);
+    }
     private void confirmDeleteSelected() {
         client.setScreen(new ConfirmScreen(ok -> { if (!ok) { client.setScreen(this); return; } deleteNext(List.copyOf(selected), 0); }, Text.literal("Kameras löschen"), Text.literal(selected.size() + " Kamera(s) wirklich löschen?"), Text.literal("Löschen"), Text.literal("Abbrechen")));
     }
