@@ -26,6 +26,8 @@ public final class BildschirmErstellenScreen extends Screen {
     private UUID selectedCameraId;
     private String selectedCameraName = "Keine Kamera gewählt";
     private String status = "";
+    private String nameDraft = "";
+    private String urlDraft = "";
     /* Persists the selected mode while returning from CameraPickerScreen. */
     private LocalScreenStore.ScreenInputType selectedMode = LocalScreenStore.ScreenInputType.LINK;
 
@@ -38,13 +40,13 @@ public final class BildschirmErstellenScreen extends Screen {
     @Override protected void init() {
         int cx = width / 2, fieldWidth = 220, y = height / 2 - 72;
         nameField = new TextFieldWidget(textRenderer, cx - fieldWidth / 2, y, fieldWidth, 20, Text.translatable("gui.mpsqcamera.erstellen.name"));
-        nameField.setPlaceholder(Text.translatable("gui.mpsqcamera.erstellen.name.hinweis")); nameField.setMaxLength(64); nameField.setChangedListener(ignored -> updateCreateButton()); addDrawableChild(nameField); y += 28;
+        nameField.setPlaceholder(Text.translatable("gui.mpsqcamera.erstellen.name.hinweis")); nameField.setMaxLength(64); nameField.setText(nameDraft); nameField.setChangedListener(value -> { nameDraft = value; updateCreateButton(); }); addDrawableChild(nameField); y += 28;
         modeButton = addDrawableChild(CyclingButtonWidget.builder(LocalScreenStore.ScreenInputType::text).values(LocalScreenStore.ScreenInputType.values()).initially(selectedMode)
                 .build(cx - fieldWidth / 2, y, fieldWidth, 20, Text.translatable("gui.mpsqcamera.erstellen.modus"), (b, mode) -> {
                     selectedMode = mode;
                     updateMode(mode);
                 })); y += 28;
-        urlField = new TextFieldWidget(textRenderer, cx - fieldWidth / 2, y, fieldWidth, 20, Text.translatable("gui.mpsqcamera.erstellen.url")); urlField.setPlaceholder(Text.literal("https://...")); urlField.setMaxLength(2048); addDrawableChild(urlField); y += 28;
+        urlField = new TextFieldWidget(textRenderer, cx - fieldWidth / 2, y, fieldWidth, 20, Text.translatable("gui.mpsqcamera.erstellen.url")); urlField.setPlaceholder(Text.literal("https://...")); urlField.setMaxLength(2048); urlField.setText(urlDraft); urlField.setChangedListener(value -> urlDraft = value); addDrawableChild(urlField); y += 28;
         cameraButton = addDrawableChild(ButtonWidget.builder(Text.literal("Kamera: " + selectedCameraName), b -> openCameraPicker()).dimensions(cx - fieldWidth / 2, y, fieldWidth, 20).build()); y += 32;
         createButton = addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.erstellen.erstellen"), b -> createScreen()).dimensions(cx - fieldWidth / 2, y, 106, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.erstellen.abbrechen"), b -> close()).dimensions(cx + 4, y, 106, 20).build());
@@ -56,6 +58,8 @@ public final class BildschirmErstellenScreen extends Screen {
         urlField.visible = cinema; urlField.setEditable(cinema); cameraButton.visible = !cinema; cameraButton.active = !cinema; updateCreateButton();
     }
     private void openCameraPicker() {
+		nameDraft = nameField.getText();
+		urlDraft = urlField.getText();
         client.setScreen(new CameraPickerScreen(this, camera -> {
             selectedCameraId = camera.id();
             selectedCameraName = camera.name();

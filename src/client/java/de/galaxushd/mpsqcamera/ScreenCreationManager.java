@@ -282,7 +282,9 @@ public final class ScreenCreationManager {
 		if (player.isRemoved() || !player.isAlive()) return false;
 		if (client.world == null) return false;
 		if (!client.world.getRegistryKey().equals(session.originDimension())) return false;
-		if (client.currentScreen != null) return false;
+		// Do not abort a remote view merely because Windows temporarily steals
+		// focus or Minecraft briefly creates an overlay while focus returns.
+		// A deliberate ESC press is handled separately in handleActiveViewSession.
 
 		LocalScreenStore.LocalScreenData sourceScreen = LocalScreenStore.findByAnchor(session.sourceAnchor()).orElse(null);
 		if (sourceScreen == null) return false;
