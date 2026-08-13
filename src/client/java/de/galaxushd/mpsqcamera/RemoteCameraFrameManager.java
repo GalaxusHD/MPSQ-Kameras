@@ -45,6 +45,7 @@ public final class RemoteCameraFrameManager {
     private static final Map<UUID, String> FRAME_URLS = new ConcurrentHashMap<>();
     private static final Map<UUID, Long> FRAME_URL_EXPIRY_MS = new ConcurrentHashMap<>();
     private static final Set<UUID> URL_REQUESTS_IN_FLIGHT = ConcurrentHashMap.newKeySet();
+    private static final Set<UUID> FRAME_DOWNLOADS_IN_FLIGHT = ConcurrentHashMap.newKeySet();
     private static final Set<UUID> OWN_BODYCAMS = new HashSet<>();
 
     private static UUID providerCamera;
@@ -129,7 +130,8 @@ public final class RemoteCameraFrameManager {
                     .toArray(CompletableFuture[]::new);
             CompletableFuture.allOf(uploads).whenComplete((ignored, error) -> {
                 publishing = false;
-                if (error != null) MpsqCameraClient.LOGGER.debug("Kamera-Bild konnte nicht hochgeladen werden", error);
+
+                if (error != null) MpsqCameraClient.LOGGER.warn("Kamera-Bild konnte nicht hochgeladen werden", error);
 				finishSnapshot();
             });
         });
@@ -197,8 +199,15 @@ public final class RemoteCameraFrameManager {
         LAST_REQUEST_MS.put(cameraId, now);
         String frameUrl = FRAME_URLS.get(cameraId);
         if (frameUrl != null && now < FRAME_URL_EXPIRY_MS.getOrDefault(cameraId, 0L)) {
-            downloadFrame(frameUrl).thenAccept(image -> MinecraftClient.getInstance().execute(() -> install(cameraId, image)))
-                    .exceptionally(error -> { invalidateFrameUrl(cameraId); return null; });
+            if (!FRAME_DOWNLOADS_IN_FLIGHT.add(cameraId)) return;
+            downloadFrame(frameUrl)
+                    .thenAccept(image -> MinecraftClient.getInstance().execute(() -> install(cameraId, image)))
+                    .exceptionally(error -> {
+                        invalidateFrameUrl(cameraId);
+                        MpsqCameraClient.LOGGER.debug("Direkter R2-Abruf fehlgeschlagen", error);
+                        return null;
+                    })
+                    .whenComplete((ignored, error) -> FRAME_DOWNLOADS_IN_FLIGHT.remove(cameraId));
             return;
         }
         if (!URL_REQUESTS_IN_FLIGHT.add(cameraId)) return;
@@ -257,7 +266,7 @@ public final class RemoteCameraFrameManager {
     }
 
     private static CompletableFuture<NativeImage> downloadFrame(String url) {
-        HttpRequest request = HttpRequest.newBuilder(URI.create(url)).header("Cache-Control", "no-cache").GET().build();
+        HttpRequest request = HttpRequest.newBuilder(URI.create(url)).GET().build();
         return HTTP.sendAsync(request, HttpResponse.BodyHandlers.ofByteArray())
                 .thenApply(response -> {
                     if (response.statusCode() < 200 || response.statusCode() >= 300) {
@@ -310,6 +319,7 @@ public final class RemoteCameraFrameManager {
         FRAME_URLS.clear();
         FRAME_URL_EXPIRY_MS.clear();
         URL_REQUESTS_IN_FLIGHT.clear();
+        FRAME_DOWNLOADS_IN_FLIGHT.clear();
         OWN_BODYCAMS.clear();
     }
 }
