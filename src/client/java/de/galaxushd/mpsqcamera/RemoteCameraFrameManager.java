@@ -1,6 +1,7 @@
 package de.galaxushd.mpsqcamera;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
@@ -225,7 +226,34 @@ public final class RemoteCameraFrameManager {
         // Renew before the R2 signature reaches its expiry.
         FRAME_URLS.put(cameraId, url);
         FRAME_URL_EXPIRY_MS.put(cameraId, System.currentTimeMillis() + Math.max(1L, validForSeconds - 60L) * 1000L);
-        return downloadFrame(url);
+        // R2 normally serves the signed URL directly. If a network, signature
+        // or local-cache problem prevents that download, use a one-off API
+        // fallback. This keeps a linked screen usable without making the
+        // normal live stream go through Supabase.
+        return downloadFrame(url).handle((image, error) -> {
+            if (error == null) {
+                return CompletableFuture.completedFuture(image);
+            }
+            invalidateFrameUrl(cameraId);
+            return MpsqApiClient.get("/cameras/" + cameraId + "/frame?inline=1")
+                    .thenApply(RemoteCameraFrameManager::decodeInlineFrame);
+        }).thenCompose(frame -> frame);
+    }
+
+    private static NativeImage decodeInlineFrame(JsonElement result) {
+        if (result == null || !result.isJsonObject()) {
+            throw new IllegalStateException("Kamera-Bild konnte nicht geladen werden");
+        }
+        JsonObject object = result.getAsJsonObject();
+        if (!object.has("pngBase64") || object.get("pngBase64").isJsonNull()) {
+            throw new IllegalStateException("Kamera-Bild ist nicht verfügbar");
+        }
+        try {
+            byte[] bytes = java.util.Base64.getDecoder().decode(object.get("pngBase64").getAsString());
+            return NativeImage.read(new ByteArrayInputStream(bytes));
+        } catch (IOException | IllegalArgumentException exception) {
+            throw new IllegalStateException("Kamera-Bild ist ungültig", exception);
+        }
     }
 
     private static CompletableFuture<NativeImage> downloadFrame(String url) {
