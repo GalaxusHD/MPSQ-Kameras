@@ -54,51 +54,38 @@ public class ModConfigScreen extends Screen {
     }
 
     private int nextControlY(int menuTop, int index) { return menuTop + index * (BUTTON_HEIGHT + BUTTON_SPACING); }
-
     private void updateActivationCodeState() {
         boolean hasFocus = codeInputField.isFocused();
         boolean hasText = !codeInputField.getText().isEmpty();
         codeInputField.setPlaceholder(hasFocus || hasText ? Text.empty() : Text.translatable("gui.mpsqcamera.main.activation.placeholder"));
         if (joinButton != null) joinButton.active = codeInputField.getText().length() == 6;
     }
-
     private void submitCode() {
         if (codeInputField.getText().length() != 6) return;
         JsonObject body = new JsonObject();
         body.addProperty("code", codeInputField.getText());
+        // A joined player receives not only the screen entry, but also every
+        // camera that is linked to that screen.  Refresh both caches before the
+        // list is shown, otherwise a viewer would see an offline camera screen.
         MpsqApiClient.post("/join", body)
                 .thenCompose(result -> ScreenSyncManager.refresh())
                 .thenCompose(ignored -> MpsqApiClient.refreshCameras())
-                .thenRun(() -> client.execute(() -> {
-                    codeInputField.setText("");
-                    client.setScreen(new BildschirmListScreen(this));
-                }))
-                .exceptionally(error -> {
-                    MpsqCameraClient.LOGGER.warn("MPSQ-Code konnte nicht verwendet werden", error);
-                    return null;
-                });
+                .thenRun(() ->
+                client.execute(() -> { codeInputField.setText(""); client.setScreen(new BildschirmListScreen(this)); })
+        ).exceptionally(error -> { MpsqCameraClient.LOGGER.warn("MPSQ-Code konnte nicht verwendet werden", error); return null; });
     }
-
     private void openScreens() { client.setScreen(new BildschirmListScreen(this)); }
     private void openCameras() { client.setScreen(new CameraListScreen(this)); }
     private void openSettings() { client.setScreen(new ModSettingsScreen(this)); }
     private void openLicense() { client.setScreen(new LizenzScreen(this)); }
 
-    @Override
-    public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
-        context.fillGradient(0, 0, width, height, 0xCC1A1A1A, 0xCC050505);
-    }
-
-    @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        updateActivationCodeState();
-        super.render(context, mouseX, mouseY, delta);
+    @Override public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) { context.fillGradient(0, 0, width, height, 0xCC1A1A1A, 0xCC050505); }
+    @Override public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+        updateActivationCodeState(); super.render(context, mouseX, mouseY, delta);
         int availableLogoHeight = height / 2 - LOGO_TOP_MARGIN - LOGO_BOTTOM_MARGIN;
         int logoSize = Math.max(1, Math.min(LOGO_MAX_SIZE, Math.min(width - HORIZONTAL_MARGIN * 2, availableLogoHeight)));
         context.drawTexture(RenderPipelines.GUI_TEXTURED, LOGO_TEXTURE, (width - logoSize) / 2, LOGO_TOP_MARGIN, 0, 0, logoSize, logoSize,
                 LOGO_TEXTURE_SIZE, LOGO_TEXTURE_SIZE, LOGO_TEXTURE_SIZE, LOGO_TEXTURE_SIZE);
     }
-
-    @Override
-    public boolean shouldPause() { return false; }
+    @Override public boolean shouldPause() { return false; }
 }

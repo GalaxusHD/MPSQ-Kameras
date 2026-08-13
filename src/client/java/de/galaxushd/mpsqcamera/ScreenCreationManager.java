@@ -37,6 +37,7 @@ public final class ScreenCreationManager {
 
 	private static boolean wasUsePressedLastTick = false;
 	private static boolean wasEscPressedLastTick = false;
+	private static boolean ignoreEscapeUntilReleased = false;
 	private static boolean wasPreviousCameraPressed = false;
 	private static boolean wasNextCameraPressed = false;
 	private static BlockPos selectionPos1;
@@ -80,6 +81,11 @@ public final class ScreenCreationManager {
 	/** True while Minecraft's mouse input belongs to the remote camera. */
 	public static boolean isCameraViewActive() {
 		return activeViewSession != null && !exitSnapshotPending;
+	}
+
+	/** Marks an ESC press that belongs to closing a vanilla UI such as chat. */
+	public static void ignoreEscapeForOpenScreen() {
+		ignoreEscapeUntilReleased = true;
 	}
 
 	/**
@@ -279,8 +285,15 @@ public final class ScreenCreationManager {
 		}
 
 		if (escPressed && !wasEscPressedLastTick) {
-			exitViewMode(client, true);
-			return;
+			if (!ignoreEscapeUntilReleased) {
+				exitViewMode(client, true);
+				return;
+			}
+		}
+
+		if (!escPressed) {
+			// The UI-close press has ended. A later ESC press may leave the camera.
+			ignoreEscapeUntilReleased = false;
 		}
 
 		if (usePressed && !wasUsePressedLastTick) {
