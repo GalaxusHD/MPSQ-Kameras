@@ -36,8 +36,12 @@ import java.util.concurrent.CompletableFuture;
 public final class RemoteCameraFrameManager {
     // 42 ms corresponds to approximately 24 frames per second.
     private static final long FRAME_INTERVAL_MS = 42L;
-    private static final int STREAM_WIDTH = 480;
-    private static final int STREAM_HEIGHT = 270;
+    // 540p keeps the 16:9 image much sharper on large in-world screens while
+    // remaining realistic for a live PNG transfer.
+    // The actual send rate remains bounded by the completed upload, so a slow
+    // connection cannot queue an unlimited number of screenshots.
+    private static final int STREAM_WIDTH = 960;
+    private static final int STREAM_HEIGHT = 540;
     private static final HttpClient HTTP = HttpClient.newHttpClient();
     private static final Map<UUID, Identifier> TEXTURE_IDS = new ConcurrentHashMap<>();
     private static final Map<UUID, NativeImageBackedTexture> TEXTURES = new ConcurrentHashMap<>();
@@ -200,7 +204,7 @@ public final class RemoteCameraFrameManager {
         String frameUrl = FRAME_URLS.get(cameraId);
         if (frameUrl != null && now < FRAME_URL_EXPIRY_MS.getOrDefault(cameraId, 0L)) {
             if (!FRAME_DOWNLOADS_IN_FLIGHT.add(cameraId)) return;
-            downloadFrame(frameUrl)
+            downloadFrame(cacheBusted(frameUrl))
                     .thenAccept(image -> MinecraftClient.getInstance().execute(() -> install(cameraId, image)))
                     .exceptionally(error -> {
                         invalidateFrameUrl(cameraId);
@@ -232,14 +236,13 @@ public final class RemoteCameraFrameManager {
         String url = result.getAsJsonObject().get("url").getAsString();
         long validForSeconds = result.getAsJsonObject().has("expiresIn")
                 ? result.getAsJsonObject().get("expiresIn").getAsLong() : 60L;
-        // Renew before the R2 signature reaches its expiry.
+        // Renew before the signed Storage URL reaches its expiry.
         FRAME_URLS.put(cameraId, url);
         FRAME_URL_EXPIRY_MS.put(cameraId, System.currentTimeMillis() + Math.max(1L, validForSeconds - 60L) * 1000L);
-        // R2 normally serves the signed URL directly. If a network, signature
-        // or local-cache problem prevents that download, use a one-off API
-        // fallback. This keeps a linked screen usable without making the
-        // normal live stream go through Supabase.
-        return downloadFrame(url).handle((image, error) -> {
+        // The camera keeps overwriting one fixed object key. Add a harmless
+        // per-request query value so no CDN or proxy can hand out an old copy
+        // of that key for minutes after a new frame was uploaded.
+        return downloadFrame(cacheBusted(url)).handle((image, error) -> {
             if (error == null) {
                 return CompletableFuture.completedFuture(image);
             }
@@ -281,6 +284,10 @@ public final class RemoteCameraFrameManager {
                         throw new IllegalStateException(exception);
                     }
                 });
+    }
+
+    private static String cacheBusted(String url) {
+        return url + (url.contains("?") ? "&" : "?") + "mpsq_frame=" + System.nanoTime();
     }
 
     private static void invalidateFrameUrl(UUID cameraId) {
