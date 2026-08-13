@@ -2,12 +2,12 @@
   "required": true,
   "package": "de.galaxushd.mpsqcamera.mixin.client",
   "compatibilityLevel": "JAVA_21",
-  "client": [
-    "MouseMixin",
-    "GameRendererMixin",
-    "KeyboardMixin",
-    "InGameHudMixin"
-  ],
+	"client": [
+		"MouseMixin",
+		"GameRendererMixin",
+		"KeyboardMixin",
+		"InGameHudMixin"
+	],
   "injectors": {
     "defaultRequire": 1
   }
