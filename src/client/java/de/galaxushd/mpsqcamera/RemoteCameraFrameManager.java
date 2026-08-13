@@ -33,7 +33,8 @@ import java.util.concurrent.CompletableFuture;
  * caused camera jumps, hand artefacts and broken freecam movement.</p>
  */
 public final class RemoteCameraFrameManager {
-    private static final long FRAME_INTERVAL_MS = 100L;
+    // 42 ms corresponds to approximately 24 frames per second.
+    private static final long FRAME_INTERVAL_MS = 42L;
     private static final int STREAM_WIDTH = 480;
     private static final int STREAM_HEIGHT = 270;
     private static final HttpClient HTTP = HttpClient.newHttpClient();
