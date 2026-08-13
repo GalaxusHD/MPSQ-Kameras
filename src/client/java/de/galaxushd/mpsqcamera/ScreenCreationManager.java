@@ -158,10 +158,20 @@ public final class ScreenCreationManager {
 				if (data.position() != null) {
 					placeCameraProxy(activeViewSession.cameraEntity(), data.position(), data.yaw(), data.pitch());
 					activeViewSession.setViewRotation(data.yaw(), data.pitch());
+					activeViewSession.setCameraId(camera);
 				}
 			});
 			RemoteCameraFrameManager.startPublishing(camera);
 		}
+
+		LocalCameraStore.find(camera).ifPresent(data -> {
+			int current = ScreenCameraStore.activePosition(screenId);
+			int total = ScreenCameraStore.cameras(screenId).size();
+			MinecraftClient client = MinecraftClient.getInstance();
+			if (client.player != null) {
+				client.player.sendMessage(Text.literal(data.name() + " " + current + "/" + total), true);
+			}
+		});
 		MpsqCameraClient.LOGGER.info("[MPSQ] Aktive Kamera gewechselt: {}", camera);
 	}
 
@@ -539,7 +549,7 @@ public final class ScreenCreationManager {
 
 	private static final class ViewSession {
 		private final BlockPos sourceAnchor;
-		private final UUID cameraId;
+		private UUID cameraId;
 		private final Vec3d originPos;
 		private final RegistryKey<World> originDimension;
 		private final Entity previousCameraEntity;
@@ -569,6 +579,7 @@ public final class ScreenCreationManager {
 		private Entity previousCameraEntity() { return previousCameraEntity; }
 		private Perspective previousPerspective() { return previousPerspective; }
 		private ArmorStandEntity cameraEntity() { return cameraEntity; }
+		private void setCameraId(UUID cameraId) { this.cameraId = cameraId; }
 
 		private void applyMouseLook(double cursorDeltaX, double cursorDeltaY) {
 			// Matches Minecraft's normal Entity.changeLookDirection scale, but

@@ -33,8 +33,15 @@ public final class ScreenSyncManager {
                 List<UUID> cameraIds = new ArrayList<>();
                 if (row.has("mpsq_screen_cameras") && row.get("mpsq_screen_cameras").isJsonArray()) {
                     JsonArray assignments = row.getAsJsonArray("mpsq_screen_cameras");
+                    List<JsonObject> orderedAssignments = new ArrayList<>();
                     for (JsonElement assignment : assignments) {
-                        JsonObject link = assignment.getAsJsonObject();
+                        if (assignment.isJsonObject()) orderedAssignments.add(assignment.getAsJsonObject());
+                    }
+                    orderedAssignments.sort((left, right) -> Integer.compare(
+                            left.has("sort_order") ? left.get("sort_order").getAsInt() : 0,
+                            right.has("sort_order") ? right.get("sort_order").getAsInt() : 0
+                    ));
+                    for (JsonObject link : orderedAssignments) {
                         if (link.has("camera_id") && !link.get("camera_id").isJsonNull()) {
                             cameraIds.add(UUID.fromString(link.get("camera_id").getAsString()));
                         }
