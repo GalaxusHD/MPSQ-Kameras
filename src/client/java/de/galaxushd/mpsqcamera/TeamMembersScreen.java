@@ -66,11 +66,10 @@ public final class TeamMembersScreen extends Screen {
             rank.draw(context, x, y, tagHeight);
             y += tagHeight + 7;
         }
-        TeamStateStore.self().ifPresent(self -> {
-            if (selected.id().equals(self.id()) && self.displayedRank() == TeamRank.UNDERCOVER_001) {
-                context.drawTextWithShadow(textRenderer, Text.translatable("gui.mpsqcamera.team.members.leave001"), x, y + 4, MpsqTheme.TEXT_GEDAEMPT);
-            }
-        });
+        TeamProfile self = TeamStateStore.self().orElse(null);
+        if (self != null && selected.id().equals(self.id()) && self.displayedRank() == TeamRank.UNDERCOVER_001) {
+            context.drawTextWithShadow(textRenderer, Text.translatable("gui.mpsqcamera.team.members.leave001"), x, y + 4, MpsqTheme.TEXT_GEDAEMPT);
+        }
     }
 
     private List<TeamRank> allowedRanks() {
@@ -107,11 +106,11 @@ public final class TeamMembersScreen extends Screen {
                 }
                 y += h + 7;
             }
-            TeamStateStore.self().ifPresent(self -> {
-                if (selected.id().equals(self.id()) && self.displayedRank() == TeamRank.UNDERCOVER_001 && mouseY >= y && mouseY < y + 18) {
-                    MpsqApiClient.clearOwnUndercoverRank().whenComplete((v, error) -> client.execute(this::reload));
-                }
-            });
+            TeamProfile self = TeamStateStore.self().orElse(null);
+            if (self != null && selected.id().equals(self.id()) && self.displayedRank() == TeamRank.UNDERCOVER_001 && mouseY >= y && mouseY < y + 18) {
+                MpsqApiClient.clearOwnUndercoverRank().whenComplete((v, error) -> client.execute(this::reload));
+                return true;
+            }
         }
         return super.mouseClicked(mouseX, mouseY, button);
     }

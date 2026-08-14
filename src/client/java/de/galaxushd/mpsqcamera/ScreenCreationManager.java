@@ -156,6 +156,7 @@ public final class ScreenCreationManager {
 	private static void switchCamera(UUID screenId, int direction) {
 		UUID camera = ScreenCameraStore.next(screenId, direction);
 		if (camera == null) return;
+		MinecraftClient client = MinecraftClient.getInstance();
 
 		// The selected camera is always scoped to the selected screen by
 		// ScreenCameraStore. While a local view is active, move that view and
@@ -175,7 +176,6 @@ public final class ScreenCreationManager {
 		LocalCameraStore.find(camera).ifPresent(data -> {
 			int current = ScreenCameraStore.activePosition(screenId);
 			int total = ScreenCameraStore.cameras(screenId).size();
-			MinecraftClient client = MinecraftClient.getInstance();
 			if (client.player != null) {
 				client.player.sendMessage(Text.literal(data.name() + " " + current + "/" + total), true);
 			}
