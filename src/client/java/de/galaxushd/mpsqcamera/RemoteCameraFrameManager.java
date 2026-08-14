@@ -34,12 +34,15 @@ import java.util.concurrent.CompletableFuture;
  * caused camera jumps, hand artefacts and broken freecam movement.</p>
  */
 public final class RemoteCameraFrameManager {
-    // 42 ms corresponds to approximately 24 frames per second.
-    private static final long FRAME_INTERVAL_MS = 42L;
+    // A 960 x 540 texture upload is far more expensive than a normal HUD
+    // update. Ten FPS keeps the remote view convincingly live without making
+    // either the source player or the viewer hitch every few frames.
+    private static final long FRAME_INTERVAL_MS = 100L;
     // A bodycam is captured from its wearer's normal game render. Capturing it
-    // at cinema rate causes visible pauses for that player, so it is limited to
-    // a still-smooth 8 FPS instead of competing with every render frame.
-    private static final long BODYCAM_INTERVAL_MS = 125L;
+    // Bodycams use the same live rate as a static camera. The expensive image
+    // transformation is performed asynchronously further below, so the wearer
+    // does not pay the PNG-processing cost in the render tick.
+    private static final long BODYCAM_INTERVAL_MS = 100L;
     // 540p keeps the 16:9 image much sharper on large in-world screens while
     // remaining realistic for a live PNG transfer.
     // The actual send rate remains bounded by the completed upload, so a slow
@@ -114,37 +117,31 @@ public final class RemoteCameraFrameManager {
         publishing = true;
 
         ScreenshotRecorder.takeScreenshot(client.getFramebuffer(), 1, image -> {
-            // Make the small stream image while the framebuffer callback still
-            // owns the original. PNG encoding and disk I/O are deliberately
-            // moved off Minecraft's render thread below: doing them here is
-            // what made both stationary cameras and bodycam wearers freeze.
-            NativeImage streamImage;
-            try {
-                streamImage = resizeForStream(image);
-            } catch (RuntimeException exception) {
-                image.close();
-                publishing = false;
-                MpsqCameraClient.LOGGER.warn("Kamera-Bild konnte nicht erzeugt werden", exception);
-                finishSnapshot();
-                return;
-            }
-            image.close();
             Set<UUID> targets;
             synchronized (OWN_BODYCAMS) {
                 targets = new HashSet<>(OWN_BODYCAMS);
             }
             if (providerCamera != null) targets.add(providerCamera);
             if (targets.isEmpty()) {
+                image.close();
                 publishing = false;
                 return;
             }
+            // The NativeImage now belongs solely to this background task.
+            // Resizing, PNG compression and the temporary file operation used
+            // to happen on the source player's render thread. That was the
+            // cause of bodycam wearer hitches. The receiving viewer still does
+            // the normal texture update, which is the expected client cost.
             CompletableFuture.supplyAsync(() -> {
+                NativeImage streamImage = null;
                 try {
+                    streamImage = resizeForStream(image);
                     return encode(streamImage);
-                } catch (IOException exception) {
+                } catch (IOException | RuntimeException exception) {
                     throw new IllegalStateException("Kamera-Bild konnte nicht kodiert werden", exception);
                 } finally {
-                    streamImage.close();
+                    if (streamImage != null) streamImage.close();
+                    image.close();
                 }
             }).thenCompose(png -> {
                 CompletableFuture<?>[] uploads = targets.stream()
