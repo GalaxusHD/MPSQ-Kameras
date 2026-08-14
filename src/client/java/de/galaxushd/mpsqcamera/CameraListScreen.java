@@ -57,8 +57,13 @@ public final class CameraListScreen extends Screen {
                 boolean marked = selected.contains(camera.id());
                 c.fill(cx - 140, y, cx + 140, y + ROW_HEIGHT, marked ? 0x66557A9B : 0x55000000);
                 c.drawTextWithShadow(textRenderer, Text.literal(marked ? "[x]" : "[ ]"), cx - 134, y + 7, MpsqTheme.TEXT_NORMAL);
-                Text type = Text.translatable(camera.kind() == LocalCameraStore.CameraKind.BODYCAM ? "gui.mpsqcamera.cameras.bodycam" : "gui.mpsqcamera.cameras.static");
-                c.drawCenteredTextWithShadow(textRenderer, Text.translatable("gui.mpsqcamera.cameras.entry", camera.name(), type), cx + 12, y + 7, MpsqTheme.TEXT_NORMAL);
+                // The bodycam name already says whose bodycam it is. Adding
+                // " - Bodycam" a second time wastes space and looks duplicated.
+                Text label = camera.kind() == LocalCameraStore.CameraKind.BODYCAM
+                        ? Text.literal(camera.name())
+                        : Text.translatable("gui.mpsqcamera.cameras.entry", camera.name(),
+                                Text.translatable("gui.mpsqcamera.cameras.static"));
+                c.drawCenteredTextWithShadow(textRenderer, label, cx + 12, y + 7, MpsqTheme.TEXT_NORMAL);
             }
             y += ROW_HEIGHT + ROW_SPACING;
         }

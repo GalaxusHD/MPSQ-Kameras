@@ -75,6 +75,7 @@ public final class ScreenCreationManager {
 		// client camera snap back or spin. The disabled movement keys and zero
 		// velocity keep the body in place without fighting the server.
 		client.player.setVelocity(Vec3d.ZERO);
+		updateBodycamProxy(client, activeViewSession);
 		activeViewSession.applyViewRotation();
 	}
 
@@ -161,9 +162,10 @@ public final class ScreenCreationManager {
 		// the optional remote broadcaster to the newly selected camera as well.
 		if (activeViewSession != null && activeViewSession.sourceAnchor() != null) {
 			LocalCameraStore.find(camera).ifPresent(data -> {
-				if (data.position() != null) {
-					placeCameraProxy(activeViewSession.cameraEntity(), data.position(), data.yaw(), data.pitch());
-					activeViewSession.setViewRotation(data.yaw(), data.pitch());
+				Vec3d position = cameraPosition(client, data);
+				if (position != null) {
+					placeCameraProxy(activeViewSession.cameraEntity(), position, cameraYaw(client, data), cameraPitch(client, data));
+					activeViewSession.setViewRotation(cameraYaw(client, data), cameraPitch(client, data));
 					activeViewSession.setCameraId(camera);
 				}
 			});
@@ -186,6 +188,50 @@ public final class ScreenCreationManager {
 		return active != null ? active : screen.cameraId();
 	}
 
+	private static PlayerEntity bodycamWearer(MinecraftClient client, LocalCameraStore.CameraData camera) {
+		if (camera.kind() != LocalCameraStore.CameraKind.BODYCAM || client.world == null) return null;
+		if (camera.wearerId() != null) {
+			PlayerEntity byUuid = client.world.getPlayerByUuid(camera.wearerId());
+			if (byUuid != null) return byUuid;
+		}
+		if (camera.wearerName() != null && !camera.wearerName().isBlank()) {
+			for (PlayerEntity candidate : client.world.getPlayers()) {
+				if (camera.wearerName().equalsIgnoreCase(candidate.getName().getString())) return candidate;
+			}
+		}
+		return null;
+	}
+
+	private static Vec3d cameraPosition(MinecraftClient client, LocalCameraStore.CameraData camera) {
+		PlayerEntity wearer = bodycamWearer(client, camera);
+		return wearer != null ? wearer.getEyePos() : camera.position();
+	}
+
+	private static float cameraYaw(MinecraftClient client, LocalCameraStore.CameraData camera) {
+		PlayerEntity wearer = bodycamWearer(client, camera);
+		return wearer != null ? wearer.getYaw() : camera.yaw();
+	}
+
+	private static float cameraPitch(MinecraftClient client, LocalCameraStore.CameraData camera) {
+		PlayerEntity wearer = bodycamWearer(client, camera);
+		return wearer != null ? wearer.getPitch() : camera.pitch();
+	}
+
+	private static void updateBodycamProxy(MinecraftClient client, ViewSession session) {
+		LocalCameraStore.find(session.cameraId).ifPresent(camera -> {
+			if (camera.kind() != LocalCameraStore.CameraKind.BODYCAM) return;
+			Vec3d position = cameraPosition(client, camera);
+			if (position != null) {
+				float yaw = cameraYaw(client, camera);
+				float pitch = cameraPitch(client, camera);
+				placeCameraProxy(session.cameraEntity(), position, yaw, pitch);
+				// A bodycam is the wearer's first-person perspective. Synchronise
+				// the view before the normal session rotation is applied below.
+				session.setViewRotation(yaw, pitch);
+			}
+		});
+	}
+
 	private static void handlePassiveScreenLook(MinecraftClient client, ClientPlayerEntity player) {
 		LocalScreenStore.LocalScreenData screen = getScreenAtCrosshair(client).orElse(null);
 		UUID cameraId = screen == null ? null : activeCameraId(screen);
@@ -194,12 +240,12 @@ public final class ScreenCreationManager {
 		}
 
 		Optional<LocalCameraStore.CameraData> cameraScreen = LocalCameraStore.find(cameraId);
-		if (cameraScreen.isEmpty() || cameraScreen.get().position() == null) {
+		if (cameraScreen.isEmpty() || cameraPosition(client, cameraScreen.get()) == null) {
 			sendOfflineHint(player);
 			return;
 		}
 
-		Vec3d cameraPos = cameraScreen.get().position();
+		Vec3d cameraPos = cameraPosition(client, cameraScreen.get());
 		if (!isCameraAreaLoadedByAnyPlayer(client, cameraPos)) {
 			sendOfflineHint(player);
 		}
@@ -227,12 +273,12 @@ public final class ScreenCreationManager {
 		}
 
 		LocalCameraStore.CameraData cameraScreen = LocalCameraStore.find(cameraId).orElse(null);
-		if (cameraScreen == null || cameraScreen.position() == null) {
+		if (cameraScreen == null || cameraPosition(client, cameraScreen) == null) {
 			sendOfflineHint(player);
 			return;
 		}
 
-		Vec3d cameraPos = cameraScreen.position();
+		Vec3d cameraPos = cameraPosition(client, cameraScreen);
 		if (!isCameraAreaLoadedByAnyPlayer(client, cameraPos)) {
 			sendOfflineHint(player);
 			return;
@@ -245,7 +291,7 @@ public final class ScreenCreationManager {
 		cameraEntity.setId(nextCameraProxyEntityId++);
 		cameraEntity.setNoGravity(true);
 		cameraEntity.setInvisible(true);
-		placeCameraProxy(cameraEntity, cameraPos, cameraScreen.yaw(), cameraScreen.pitch());
+		placeCameraProxy(cameraEntity, cameraPos, cameraYaw(client, cameraScreen), cameraPitch(client, cameraScreen));
 		// A camera entity must be present in the client world. An untracked entity
 		// has no stable previous render position, which makes Minecraft interpolate
 		// the view between unrelated places and causes the visible flicker.
@@ -262,8 +308,8 @@ public final class ScreenCreationManager {
 				previousCamera,
 				previousPerspective,
 				cameraEntity,
-				cameraScreen.yaw(),
-				cameraScreen.pitch()
+				cameraYaw(client, cameraScreen),
+				cameraPitch(client, cameraScreen)
 		);
 
 		client.setCameraEntity(cameraEntity);
@@ -315,7 +361,7 @@ public final class ScreenCreationManager {
 		if (sourceScreen.inputType() != LocalScreenStore.ScreenInputType.CAMERA || cameraId == null) return false;
 
 		LocalCameraStore.CameraData cameraScreen = LocalCameraStore.find(cameraId).orElse(null);
-		return cameraScreen != null && cameraScreen.position() != null;
+		return cameraScreen != null && cameraPosition(client, cameraScreen) != null;
 	}
 
 	private static void suppressMovementAndInteraction(MinecraftClient client) {
@@ -342,11 +388,12 @@ public final class ScreenCreationManager {
 		// camera direction after leaving. Keep the proxy camera active until
 		// WorldRenderEvents captured that one frame.
 		LocalCameraStore.find(session.cameraId).ifPresentOrElse(camera -> {
-			if (camera.position() == null) {
+			Vec3d position = cameraPosition(client, camera);
+			if (position == null) {
 				finishExitViewMode(client, session, notify);
 				return;
 			}
-			placeCameraProxy(session.cameraEntity(), camera.position(), camera.yaw(), camera.pitch());
+			placeCameraProxy(session.cameraEntity(), position, cameraYaw(client, camera), cameraPitch(client, camera));
 			exitSnapshotPending = true;
 			RemoteCameraFrameManager.captureFinalSnapshot(session.cameraId,
 					() -> finishExitViewMode(client, session, notify));

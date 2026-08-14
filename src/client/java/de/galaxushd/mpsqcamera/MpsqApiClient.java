@@ -100,8 +100,10 @@ public final class MpsqApiClient {
                 Vec3d position = row.get("x").isJsonNull() ? null : new Vec3d(row.get("x").getAsDouble(), row.get("y").getAsDouble(), row.get("z").getAsDouble());
                 UUID wearer = row.has("body_owner_id") && !row.get("body_owner_id").isJsonNull()
                         ? UUID.fromString(row.get("body_owner_id").getAsString()) : null;
+                String wearerName = row.has("body_owner_name") && !row.get("body_owner_name").isJsonNull()
+                        ? row.get("body_owner_name").getAsString() : null;
                 cameras.add(new LocalCameraStore.CameraData(UUID.fromString(row.get("id").getAsString()), row.get("name").getAsString(), kind,
-                        row.get("dimension").getAsString(), position, row.get("yaw").getAsFloat(), row.get("pitch").getAsFloat(), wearer));
+                        row.get("dimension").getAsString(), position, row.get("yaw").getAsFloat(), row.get("pitch").getAsFloat(), wearer, wearerName));
             }
             return cameras;
         });

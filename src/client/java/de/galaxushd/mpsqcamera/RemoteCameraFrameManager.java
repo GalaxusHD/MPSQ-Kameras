@@ -36,6 +36,10 @@ import java.util.concurrent.CompletableFuture;
 public final class RemoteCameraFrameManager {
     // 42 ms corresponds to approximately 24 frames per second.
     private static final long FRAME_INTERVAL_MS = 42L;
+    // A bodycam is captured from its wearer's normal game render. Capturing it
+    // at cinema rate causes visible pauses for that player, so it is limited to
+    // a still-smooth 8 FPS instead of competing with every render frame.
+    private static final long BODYCAM_INTERVAL_MS = 125L;
     // 540p keeps the 16:9 image much sharper on large in-world screens while
     // remaining realistic for a live PNG transfer.
     // The actual send rate remains bounded by the completed upload, so a slow
@@ -56,6 +60,7 @@ public final class RemoteCameraFrameManager {
     private static Runnable snapshotCompleteCallback;
     private static long lastPublishMs;
     private static long lastBodycamRefreshMs;
+    private static long lastBodycamPublishMs;
     private static boolean publishing;
     private static boolean bodycamRefreshInFlight;
 
@@ -97,26 +102,30 @@ public final class RemoteCameraFrameManager {
     private static void captureProviderFrame() {
         MinecraftClient client = MinecraftClient.getInstance();
         refreshMyBodycams();
-        if ((providerCamera == null && OWN_BODYCAMS.isEmpty()) || publishing || client.getFramebuffer() == null) return;
+        boolean hasBodycams;
+        synchronized (OWN_BODYCAMS) { hasBodycams = !OWN_BODYCAMS.isEmpty(); }
+        if ((providerCamera == null && !hasBodycams) || publishing || client.getFramebuffer() == null) return;
         long now = System.currentTimeMillis();
-        if (now - lastPublishMs < FRAME_INTERVAL_MS) return;
+        long interval = providerCamera != null ? FRAME_INTERVAL_MS : BODYCAM_INTERVAL_MS;
+        if (now - lastPublishMs < interval) return;
+        if (providerCamera == null && now - lastBodycamPublishMs < BODYCAM_INTERVAL_MS) return;
         lastPublishMs = now;
+        if (providerCamera == null) lastBodycamPublishMs = now;
         publishing = true;
 
         ScreenshotRecorder.takeScreenshot(client.getFramebuffer(), 1, image -> {
-            byte[] png;
+            // Make the small stream image while the framebuffer callback still
+            // owns the original. PNG encoding and disk I/O are deliberately
+            // moved off Minecraft's render thread below: doing them here is
+            // what made both stationary cameras and bodycam wearers freeze.
+            NativeImage streamImage;
             try {
-                NativeImage streamImage = resizeForStream(image);
-                try {
-                    png = encode(streamImage);
-                } finally {
-                    streamImage.close();
-                }
-            } catch (IOException exception) {
+                streamImage = resizeForStream(image);
+            } catch (RuntimeException exception) {
                 image.close();
                 publishing = false;
                 MpsqCameraClient.LOGGER.warn("Kamera-Bild konnte nicht erzeugt werden", exception);
-				finishSnapshot();
+                finishSnapshot();
                 return;
             }
             image.close();
@@ -129,14 +138,23 @@ public final class RemoteCameraFrameManager {
                 publishing = false;
                 return;
             }
-            CompletableFuture<?>[] uploads = targets.stream()
-                    .map(cameraId -> MpsqApiClient.postCameraFrame(cameraId, png))
-                    .toArray(CompletableFuture[]::new);
-            CompletableFuture.allOf(uploads).whenComplete((ignored, error) -> {
+            CompletableFuture.supplyAsync(() -> {
+                try {
+                    return encode(streamImage);
+                } catch (IOException exception) {
+                    throw new IllegalStateException("Kamera-Bild konnte nicht kodiert werden", exception);
+                } finally {
+                    streamImage.close();
+                }
+            }).thenCompose(png -> {
+                CompletableFuture<?>[] uploads = targets.stream()
+                        .map(cameraId -> MpsqApiClient.postCameraFrame(cameraId, png))
+                        .toArray(CompletableFuture[]::new);
+                return CompletableFuture.allOf(uploads);
+            }).whenComplete((ignored, error) -> {
                 publishing = false;
-
                 if (error != null) MpsqCameraClient.LOGGER.warn("Kamera-Bild konnte nicht hochgeladen werden", error);
-				finishSnapshot();
+                finishSnapshot();
             });
         });
     }
@@ -204,11 +222,11 @@ public final class RemoteCameraFrameManager {
         String frameUrl = FRAME_URLS.get(cameraId);
         if (frameUrl != null && now < FRAME_URL_EXPIRY_MS.getOrDefault(cameraId, 0L)) {
             if (!FRAME_DOWNLOADS_IN_FLIGHT.add(cameraId)) return;
-            downloadFrame(cacheBusted(frameUrl))
+            downloadFrame(frameUrl)
                     .thenAccept(image -> MinecraftClient.getInstance().execute(() -> install(cameraId, image)))
                     .exceptionally(error -> {
                         invalidateFrameUrl(cameraId);
-                        MpsqCameraClient.LOGGER.debug("Direkter R2-Abruf fehlgeschlagen", error);
+                        MpsqCameraClient.LOGGER.debug("Direkter Kamera-Abruf fehlgeschlagen", error);
                         return null;
                     })
                     .whenComplete((ignored, error) -> FRAME_DOWNLOADS_IN_FLIGHT.remove(cameraId));
@@ -238,11 +256,11 @@ public final class RemoteCameraFrameManager {
                 ? result.getAsJsonObject().get("expiresIn").getAsLong() : 60L;
         // Renew before the signed Storage URL reaches its expiry.
         FRAME_URLS.put(cameraId, url);
-        FRAME_URL_EXPIRY_MS.put(cameraId, System.currentTimeMillis() + Math.max(1L, validForSeconds - 60L) * 1000L);
-        // The camera keeps overwriting one fixed object key. Add a harmless
-        // per-request query value so no CDN or proxy can hand out an old copy
-        // of that key for minutes after a new frame was uploaded.
-        return downloadFrame(cacheBusted(url)).handle((image, error) -> {
+        // Storage frames use one fixed filename. Request a newly signed URL at
+        // least once per second, which gives each download a fresh valid URL
+        // without breaking its signature by adding custom query parameters.
+        FRAME_URL_EXPIRY_MS.put(cameraId, System.currentTimeMillis() + 1_000L);
+        return downloadFrame(url).handle((image, error) -> {
             if (error == null) {
                 return CompletableFuture.completedFuture(image);
             }
@@ -269,7 +287,11 @@ public final class RemoteCameraFrameManager {
     }
 
     private static CompletableFuture<NativeImage> downloadFrame(String url) {
-        HttpRequest request = HttpRequest.newBuilder(URI.create(url)).GET().build();
+        HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+                .header("Cache-Control", "no-cache, no-store, max-age=0")
+                .header("Pragma", "no-cache")
+                .GET()
+                .build();
         return HTTP.sendAsync(request, HttpResponse.BodyHandlers.ofByteArray())
                 .thenApply(response -> {
                     if (response.statusCode() < 200 || response.statusCode() >= 300) {
@@ -284,10 +306,6 @@ public final class RemoteCameraFrameManager {
                         throw new IllegalStateException(exception);
                     }
                 });
-    }
-
-    private static String cacheBusted(String url) {
-        return url + (url.contains("?") ? "&" : "?") + "mpsq_frame=" + System.nanoTime();
     }
 
     private static void invalidateFrameUrl(UUID cameraId) {

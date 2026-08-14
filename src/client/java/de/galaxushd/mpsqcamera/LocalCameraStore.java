@@ -17,13 +17,13 @@ public final class LocalCameraStore {
     public static Optional<CameraData> find(UUID id) { return CAMERAS.stream().filter(camera -> camera.id().equals(id)).findFirst(); }
 
     public static CameraData createStatic(String name, String dimension, Vec3d position, float yaw, float pitch) {
-        CameraData camera = new CameraData(UUID.randomUUID(), name, CameraKind.STATIC, dimension, position, yaw, pitch, null);
+        CameraData camera = new CameraData(UUID.randomUUID(), name, CameraKind.STATIC, dimension, position, yaw, pitch, null, null);
         CAMERAS.add(camera);
         return camera;
     }
 
     public static CameraData createBodycam(String name, String dimension, UUID wearerId) {
-        CameraData camera = new CameraData(UUID.randomUUID(), name, CameraKind.BODYCAM, dimension, null, 0, 0, wearerId);
+        CameraData camera = new CameraData(UUID.randomUUID(), name, CameraKind.BODYCAM, dimension, null, 0, 0, wearerId, null);
         CAMERAS.add(camera);
         return camera;
     }
@@ -34,5 +34,5 @@ public final class LocalCameraStore {
     public enum CameraKind { STATIC, BODYCAM }
 
     public record CameraData(UUID id, String name, CameraKind kind, String dimension, Vec3d position,
-                             float yaw, float pitch, UUID wearerId) { }
+                             float yaw, float pitch, UUID wearerId, String wearerName) { }
 }
