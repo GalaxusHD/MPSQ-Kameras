@@ -144,6 +144,122 @@ public final class MpsqApiClient {
         });
     }
 
+    /** Loads the signed-in user's shared MPSQ Team role. */
+    public static CompletableFuture<TeamProfile> refreshTeamProfile() {
+        return get("/team/me").thenApply(MpsqApiClient::parseTeamProfile).thenApply(profile -> {
+            TeamStateStore.setSelf(profile);
+            return profile;
+        });
+    }
+
+    /** The API only returns members the signed-in user is allowed to see. */
+    public static CompletableFuture<List<TeamProfile>> refreshTeamMembers() {
+        return get("/team/members").thenApply(json -> {
+            List<TeamProfile> members = new ArrayList<>();
+            if (!json.isJsonArray()) return members;
+            for (JsonElement element : json.getAsJsonArray()) members.add(parseTeamProfile(element));
+            TeamStateStore.setMembers(members);
+            return members;
+        });
+    }
+
+    public static CompletableFuture<Void> changeTeamRank(UUID memberId, TeamRank rank) {
+        JsonObject body = new JsonObject();
+        body.addProperty("rank", rank.id());
+        return post("/team/members/" + memberId + "/rank", body).thenApply(ignored -> (Void) null);
+    }
+
+    public static CompletableFuture<Void> clearOwnUndercoverRank() {
+        return delete("/team/me/event-rank").thenApply(ignored -> (Void) null);
+    }
+
+    /** Sends one message to the private MPSQ Team chat. */
+    public static CompletableFuture<Void> sendTeamMessage(String message) {
+        JsonObject body = new JsonObject();
+        body.addProperty("message", message);
+        return post("/team/chat", body).thenApply(ignored -> (Void) null);
+    }
+
+    public static CompletableFuture<List<TeamChatMessage>> loadTeamMessages() {
+        return get("/team/chat").thenApply(json -> {
+            List<TeamChatMessage> messages = new ArrayList<>();
+            if (!json.isJsonArray()) return messages;
+            for (JsonElement element : json.getAsJsonArray()) {
+                JsonObject row = element.getAsJsonObject();
+                messages.add(new TeamChatMessage(
+                        row.has("sender_name") ? row.get("sender_name").getAsString() : "MPSQ Team",
+                        TeamRank.fromId(row.has("sender_rank") ? row.get("sender_rank").getAsString() : "spieler"),
+                        row.has("message") ? row.get("message").getAsString() : ""));
+            }
+            return messages;
+        });
+    }
+
+    public static CompletableFuture<List<TeamTodo>> loadTeamTodos() {
+        return get("/team/todos").thenApply(json -> {
+            List<TeamTodo> todos = new ArrayList<>();
+            if (!json.isJsonArray()) return todos;
+            for (JsonElement element : json.getAsJsonArray()) {
+                JsonObject row = element.getAsJsonObject();
+                todos.add(new TeamTodo(UUID.fromString(row.get("id").getAsString()), row.get("text").getAsString(),
+                        row.has("done") && row.get("done").getAsBoolean()));
+            }
+            return todos;
+        });
+    }
+
+    public static CompletableFuture<Void> addTeamTodo(String text) {
+        JsonObject body = new JsonObject(); body.addProperty("text", text);
+        return post("/team/todos", body).thenApply(ignored -> (Void) null);
+    }
+
+    public static CompletableFuture<Void> toggleTeamTodo(UUID id, boolean done) {
+        JsonObject body = new JsonObject(); body.addProperty("done", done);
+        return patch("/team/todos/" + id, body).thenApply(ignored -> (Void) null);
+    }
+
+    public static CompletableFuture<TeamTimerState> loadTeamTimer() {
+        return get("/team/timer").thenApply(json -> {
+            JsonObject row = json.getAsJsonObject();
+            return new TeamTimerState(row.has("running") && row.get("running").getAsBoolean(),
+                    row.has("ends_at") && !row.get("ends_at").isJsonNull() ? row.get("ends_at").getAsString() : null,
+                    row.has("label") ? row.get("label").getAsString() : "");
+        });
+    }
+
+    public static CompletableFuture<Void> updateTeamTimer(boolean running, long durationSeconds, String label) {
+        JsonObject body = new JsonObject();
+        body.addProperty("running", running); body.addProperty("durationSeconds", durationSeconds); body.addProperty("label", label);
+        return post("/team/timer", body).thenApply(ignored -> (Void) null);
+    }
+
+    public static CompletableFuture<List<TeamTemplate>> loadTeamTemplates() {
+        return get("/team/templates").thenApply(json -> {
+            List<TeamTemplate> templates = new ArrayList<>();
+            if (!json.isJsonArray()) return templates;
+            for (JsonElement element : json.getAsJsonArray()) {
+                JsonObject row = element.getAsJsonObject();
+                templates.add(new TeamTemplate(UUID.fromString(row.get("id").getAsString()), row.get("text").getAsString()));
+            }
+            return templates;
+        });
+    }
+
+    public static CompletableFuture<Void> addTeamTemplate(String text) {
+        JsonObject body = new JsonObject(); body.addProperty("text", text);
+        return post("/team/templates", body).thenApply(ignored -> (Void) null);
+    }
+
+    private static TeamProfile parseTeamProfile(JsonElement json) {
+        JsonObject row = json.getAsJsonObject();
+        UUID id = UUID.fromString(row.get("id").getAsString());
+        String name = row.has("display_name") ? row.get("display_name").getAsString() : "Minecraft Spieler";
+        TeamRank base = TeamRank.fromId(row.has("base_rank") ? row.get("base_rank").getAsString() : "spieler");
+        TeamRank active = row.has("active_rank") && !row.get("active_rank").isJsonNull()
+                ? TeamRank.fromId(row.get("active_rank").getAsString()) : null;
+        return new TeamProfile(id, name, base, active);
+    }
+
     private static CompletableFuture<JsonElement> request(String method, String path, JsonObject body, boolean authenticated) {
         HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(API_URL + path)).timeout(Duration.ofSeconds(15)).header("Accept", "application/json");
         if (authenticated) {

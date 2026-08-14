@@ -78,11 +78,21 @@ public final class RemoteCameraFrameManager {
     public static void startPublishing(UUID cameraId) {
         providerCamera = cameraId;
         lastPublishMs = 0L;
+        announceCamera(cameraId, "start");
     }
 
     /** Stops static-camera transmission immediately after leaving the view. */
     public static void stopPublishing() {
+        if (providerCamera != null) announceCamera(providerCamera, "stop");
         providerCamera = null;
+    }
+
+    private static void announceCamera(UUID cameraId, String action) {
+        if (!MpsqApiClient.isReady()) return;
+        JsonObject body = new JsonObject();
+        body.addProperty("cameraId", cameraId.toString());
+        body.addProperty("action", action);
+        MpsqApiClient.post("/team/camera-events", body).exceptionally(ignored -> null);
     }
 
     /**

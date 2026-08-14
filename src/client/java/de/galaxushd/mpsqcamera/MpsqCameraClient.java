@@ -11,7 +11,7 @@ public class MpsqCameraClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        LOGGER.info("[MPSQ Kameras] Client mod initialized.");
+        LOGGER.info("[MPSQ Team] Client mod initialized.");
         ScreenCreationManager.initialize();
         CameraCreationManager.initialize();
         BodycamRequestManager.initialize();
@@ -19,9 +19,12 @@ public class MpsqCameraClient implements ClientModInitializer {
         SelectionRenderer.initialize();
         ScreenRenderer.initialize();
         RemoteCameraFrameManager.initialize();
+        TeamCommandManager.initialize();
         CinemaBrowserManager.initialize();
         MpsqApiClient.initialize().thenCompose(ignored -> MpsqApiClient.refreshCameras())
-        .thenCompose(ignored -> ScreenSyncManager.refresh()).exceptionally(error -> {
+        .thenCompose(ignored -> ScreenSyncManager.refresh())
+        .thenCompose(ignored -> MpsqApiClient.refreshTeamProfile())
+        .exceptionally(error -> {
             LOGGER.warn("MPSQ-API ist momentan nicht erreichbar", error);
             return null;
         });

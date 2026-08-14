@@ -32,9 +32,9 @@ public final class BodycamRequestManager {
                 client.player.sendMessage(Text.translatable("gui.mpsqcamera.bodycam.sent", playerName), true);
                 return;
             }
-            Throwable cause = error.getCause() == null ? error : error.getCause();
-            String message = cause.getMessage();
-            client.player.sendMessage(Text.literal(message == null ? "Bodycam-Anfrage konnte nicht gesendet werden." : message), true);
+            // Never expose an internal API path or translation key in the HUD.
+            // The user only needs the clear, localised failure message.
+            client.player.sendMessage(Text.translatable("gui.mpsqcamera.bodycam.failed"), true);
         }));
     }
 

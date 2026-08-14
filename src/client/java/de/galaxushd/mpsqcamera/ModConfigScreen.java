@@ -50,6 +50,8 @@ public class ModConfigScreen extends Screen {
                 .dimensions(menuX, nextControlY(menuTop, 4), buttonWidth, BUTTON_HEIGHT).build());
         addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.hauptmenu.lizenz"), button -> openLicense())
                 .dimensions(LICENSE_MARGIN, height - LICENSE_MARGIN - BUTTON_HEIGHT, LICENSE_WIDTH, BUTTON_HEIGHT).build());
+        addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.team.open"), button -> openTeam())
+                .dimensions(LICENSE_MARGIN, height - LICENSE_MARGIN - BUTTON_HEIGHT * 2 - BUTTON_SPACING, LICENSE_WIDTH, BUTTON_HEIGHT).build());
         updateActivationCodeState();
     }
 
@@ -77,6 +79,7 @@ public class ModConfigScreen extends Screen {
     private void openScreens() { client.setScreen(new BildschirmListScreen(this)); }
     private void openCameras() { client.setScreen(new CameraListScreen(this)); }
     private void openSettings() { client.setScreen(new ModSettingsScreen(this)); }
+    private void openTeam() { client.setScreen(new TeamHubScreen(this)); }
     private void openLicense() { client.setScreen(new LizenzScreen(this)); }
 
     @Override public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) { context.fillGradient(0, 0, width, height, 0xCC1A1A1A, 0xCC050505); }
