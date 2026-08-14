@@ -166,6 +166,12 @@ public final class MpsqApiClient {
     public static CompletableFuture<Void> changeTeamRank(UUID memberId, TeamRank rank) {
         JsonObject body = new JsonObject();
         body.addProperty("rank", rank.id());
+        // 001 remains a small self-managed event role. Every other rank is
+        // only a request: the protected website must approve it first.
+        if (rank != TeamRank.UNDERCOVER_001) {
+            body.addProperty("targetId", memberId.toString());
+            return post("/team/rank-requests", body).thenApply(ignored -> (Void) null);
+        }
         return post("/team/members/" + memberId + "/rank", body).thenApply(ignored -> (Void) null);
     }
 
