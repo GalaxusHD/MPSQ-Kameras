@@ -65,6 +65,8 @@
     "gui.mpsqcamera.team.members.help":  "Select a person, then click an allowed rank.",
     "gui.mpsqcamera.team.members.choose":  "Rank for %s",
     "gui.mpsqcamera.team.members.leave001":  "Remove 001 event rank",
+    "gui.mpsqcamera.team.members.overview":  "Ranks:",
+    "gui.mpsqcamera.team.members.temporary":  "Temporary rank:",
     "gui.mpsqcamera.team.chat.placeholder":  "Message the team...",
     "gui.mpsqcamera.team.chat.send":  "Send",
     "gui.mpsqcamera.team.command.usage":  "Use /mpsq \u003cmessage\u003e",
