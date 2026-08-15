@@ -14,14 +14,20 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 /** Replaces a server-provided prefix locally for MPSQ Team users. */
 @Mixin(net.minecraft.client.render.entity.PlayerEntityRenderer.class)
 public abstract class PlayerEntityRendererMixin {
-    @ModifyVariable(method = "renderLabelIfPresent", at = @At("HEAD"), argsOnly = true)
+    /**
+     * PlayerEntityRenderer receives the final server nameplate as its only Text
+     * argument. Replacing that argument at method entry removes every server
+     * prefix (for example "ULTRA") in one place before Minecraft renders it.
+     */
+    @ModifyVariable(
+            method = "renderLabelIfPresent(Lnet/minecraft/client/render/entity/state/PlayerEntityRenderState;Lnet/minecraft/text/Text;Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;I)V",
+            at = @At("HEAD"),
+            argsOnly = true,
+            ordinal = 0
+    )
     private Text mpsq$replaceServerRank(
             Text original,
-            PlayerEntityRenderState state,
-            Text renderedText,
-            MatrixStack matrices,
-            VertexConsumerProvider consumers,
-            int light
+            PlayerEntityRenderState state
     ) {
         if (!TeamVisibilitySettings.visible()) return original;
         // Some servers pass the complete server label here (for example
@@ -36,9 +42,12 @@ public abstract class PlayerEntityRendererMixin {
                         || matchesProfileName(value.displayName(), originalName))
                 .findFirst().orElse(null);
         if (profile == null) return original;
+        // Deliberately build an entirely new label.  Appending to "original"
+        // would preserve the server's rank prefix and causes tags such as
+        // "ULTRA" to remain visible.
         return Text.literal("[" + profile.displayedRank().label() + "] ")
                 .formatted(profile.displayedRank().chatColor())
-                .append(Text.literal(profile.displayName()));
+                .append(Text.literal(profile.displayName()).formatted(net.minecraft.util.Formatting.WHITE));
     }
 
     private static boolean matchesProfileName(String profileName, String renderedName) {
