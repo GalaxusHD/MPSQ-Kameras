@@ -1,6 +1,6 @@
 {
   "required": true,
-  "package": "de.galaxushd.mpsqcamera.mixin.client",
+  "package": "de.galaxushd.mpsqteam.mixin.client",
   "compatibilityLevel": "JAVA_21",
 	"client": [
 		"MouseMixin",
