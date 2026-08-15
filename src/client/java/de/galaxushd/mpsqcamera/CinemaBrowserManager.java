@@ -31,18 +31,11 @@ public final class CinemaBrowserManager {
     private static final Set<UUID> FAILED_BROWSERS = new HashSet<>();
     private static int ticks;
     private static volatile boolean refreshInProgress;
+    private static boolean initializationAttempted;
 
     private CinemaBrowserManager() { }
 
     public static void initialize() {
-        try {
-            if (!MCEF.isInitialized() && !MCEF.initialize()) {
-                MpsqCameraClient.LOGGER.warn("MCEF konnte nicht initialisiert werden; Kino-Bildschirme bleiben offline.");
-            }
-        } catch (RuntimeException exception) {
-            MpsqCameraClient.LOGGER.warn("MCEF konnte nicht initialisiert werden; Kino-Bildschirme bleiben offline.", exception);
-        }
-        CinemaAudioManager.initialize();
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.world == null) {
                 clear();
@@ -78,7 +71,8 @@ public final class CinemaBrowserManager {
     }
 
     public static void synchronize() {
-        if (!MCEF.isInitialized()) return;
+        if (!MCEF.isInitialized() && !hasPlayingCinemaScreen()) return;
+        if (!MCEF.isInitialized() && !ensureInitialized()) return;
 
         Set<UUID> wanted = new HashSet<>();
         for (LocalScreenStore.LocalScreenData screen : LocalScreenStore.getAllScreens()) {
@@ -113,6 +107,39 @@ public final class CinemaBrowserManager {
 
         for (UUID id : new HashSet<>(BROWSERS.keySet())) {
             if (!wanted.contains(id)) close(id);
+        }
+    }
+
+    private static boolean hasPlayingCinemaScreen() {
+        for (LocalScreenStore.LocalScreenData screen : LocalScreenStore.getAllScreens()) {
+            if (screen.inputType() == LocalScreenStore.ScreenInputType.LINK
+                    && !screen.url().isBlank()
+                    && CinemaPlaybackStore.get(screen.id()).playing()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Chromium must not be started during Minecraft's own boot sequence.
+     * On some PCs this leaves the game window black after the loading screen.
+     * It is therefore initialized lazily, on the first world synchronization.
+     */
+    private static boolean ensureInitialized() {
+        if (MCEF.isInitialized()) return true;
+        if (initializationAttempted) return false;
+        initializationAttempted = true;
+        try {
+            if (!MCEF.initialize()) {
+                MpsqCameraClient.LOGGER.warn("MCEF konnte nicht initialisiert werden; Kino-Bildschirme bleiben offline.");
+                return false;
+            }
+            CinemaAudioManager.initialize();
+            return true;
+        } catch (RuntimeException exception) {
+            MpsqCameraClient.LOGGER.warn("MCEF konnte nicht initialisiert werden; Kino-Bildschirme bleiben offline.", exception);
+            return false;
         }
     }
 
