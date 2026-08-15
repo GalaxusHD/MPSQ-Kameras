@@ -39,7 +39,7 @@ loom {
 	splitEnvironmentSourceSets()
 
 	mods {
-		"mpsqcamera" {
+		"mpsqteam" {
 			sourceSet sourceSets.main
 			sourceSet sourceSets.client
 		}
