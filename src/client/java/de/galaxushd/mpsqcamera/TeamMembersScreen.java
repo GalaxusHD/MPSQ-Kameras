@@ -19,6 +19,7 @@ public final class TeamMembersScreen extends Screen {
     private static final int MAX_CONTENT_WIDTH = 720;
     private static final int PAGE_MARGIN = 12;
     private static final int LIST_TOP = 78;
+    private static final int RIGHT_COLUMN_TOP = LIST_TOP + 20;
     private static final int RANK_X_GAP = 28;
     private static final int TAG_HEIGHT = 9;
     private static final int TAG_SPACING = 7;
@@ -85,7 +86,7 @@ public final class TeamMembersScreen extends Screen {
             y += ROW_HEIGHT;
         }
 
-        renderRightColumn(context, right, LIST_TOP);
+        renderRightColumn(context, right, RIGHT_COLUMN_TOP);
     }
 
     private void renderRightColumn(DrawContext context, int x, int y) {
@@ -96,15 +97,13 @@ public final class TeamMembersScreen extends Screen {
         }
 
         if (selected == null) return;
-        if (usesTemporary001()) {
+        List<TeamRank> temporary = temporaryRanks();
+        if (!temporary.isEmpty()) {
             context.drawTextWithShadow(textRenderer, Text.translatable("gui.mpsqcamera.team.members.temporary"), x, y - 18, MpsqTheme.TEXT_NORMAL);
-            // The event rank remains visible for every selected person.  It is
-            // intentionally clickable only for oneself, except for the Sr
-            // Offizier who may manage it for other members.
-            TeamRank.UNDERCOVER_001.draw(context, x, y, TAG_HEIGHT);
+            drawRanks(context, x, y, temporary);
             // Leave enough room for the next heading.  The old short gap put
             // "Rang für ..." directly over the 001 rank image.
-            y += TAG_HEIGHT + TAG_SPACING + SECTION_SPACING;
+            y += temporary.size() * (TAG_HEIGHT + TAG_SPACING) + SECTION_SPACING;
         }
 
         List<TeamRank> permanent = permanentRanks();
@@ -142,13 +141,32 @@ public final class TeamMembersScreen extends Screen {
         return self != null && self.baseRank().level() >= TeamRank.SOLDIER.level();
     }
 
-    private boolean mayToggle001() {
+    private boolean seniorSelfSelected() {
+        TeamProfile self = TeamStateStore.self().orElse(null);
+        return self != null && selected != null
+                && self.baseRank() == TeamRank.SENIOR_OFFICER
+                && selected.id().equals(self.id());
+    }
+
+    private List<TeamRank> temporaryRanks() {
+        if (!usesTemporary001()) return List.of();
+        // The bound Sr Offizier may temporarily assume every other role without
+        // changing the protected Sr-Offizier base role.
+        if (seniorSelfSelected()) {
+            return List.of(TeamRank.FRONTMAN, TeamRank.OFFICER, TeamRank.SOLDIER,
+                    TeamRank.WORKER, TeamRank.UNDERCOVER_001, TeamRank.VIP, TeamRank.PLAYER);
+        }
+        return List.of(TeamRank.UNDERCOVER_001);
+    }
+
+    private boolean maySetTemporaryRank(TeamRank rank) {
         TeamProfile self = TeamStateStore.self().orElse(null);
         if (self == null || selected == null) return false;
+        if (seniorSelfSelected()) return rank != TeamRank.SENIOR_OFFICER;
         if (self.baseRank() == TeamRank.SENIOR_OFFICER) {
-            return selected.baseRank() != TeamRank.SENIOR_OFFICER;
+            return rank == TeamRank.UNDERCOVER_001 && selected.baseRank() != TeamRank.SENIOR_OFFICER;
         }
-        return selected.id().equals(self.id());
+        return rank == TeamRank.UNDERCOVER_001 && selected.id().equals(self.id());
     }
 
     private List<TeamRank> permanentRanks() {
@@ -184,13 +202,17 @@ public final class TeamMembersScreen extends Screen {
 
         if (selected != null && !publicView()) {
             int x = left + listWidth + RANK_X_GAP;
-            int y = LIST_TOP;
-            if (usesTemporary001()) {
-                if (mayToggle001() && withinRank(mouseX, mouseY, x, y, TeamRank.UNDERCOVER_001)) {
-                    toggle001();
-                    return true;
+            int y = RIGHT_COLUMN_TOP;
+            List<TeamRank> temporary = temporaryRanks();
+            if (!temporary.isEmpty()) {
+                for (TeamRank rank : temporary) {
+                    if (maySetTemporaryRank(rank) && withinRank(mouseX, mouseY, x, y, rank)) {
+                        toggleTemporaryRank(rank);
+                        return true;
+                    }
+                    y += TAG_HEIGHT + TAG_SPACING;
                 }
-                y += TAG_HEIGHT + TAG_SPACING + SECTION_SPACING;
+                y += SECTION_SPACING;
             }
             for (TeamRank rank : permanentRanks()) {
                 if (withinRank(mouseX, mouseY, x, y, rank)) {
@@ -208,11 +230,11 @@ public final class TeamMembersScreen extends Screen {
         return mouseX >= x - 3 && mouseX <= x + rankWidth + 3 && mouseY >= y - 3 && mouseY <= y + TAG_HEIGHT + 3;
     }
 
-    private void toggle001() {
-        if (selected.displayedRank() == TeamRank.UNDERCOVER_001) {
+    private void toggleTemporaryRank(TeamRank rank) {
+        if (selected.activeRank() == rank) {
             MpsqApiClient.clearUndercoverRank(selected.id()).whenComplete((ignored, error) -> client.execute(this::reload));
         } else {
-            MpsqApiClient.changeTeamRank(selected.id(), TeamRank.UNDERCOVER_001)
+            MpsqApiClient.setTemporaryTeamRank(selected.id(), rank)
                     .whenComplete((ignored, error) -> client.execute(this::reload));
         }
     }

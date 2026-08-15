@@ -236,6 +236,13 @@ public final class MpsqApiClient {
         return delete("/team/members/" + memberId + "/event-rank").thenApply(ignored -> (Void) null);
     }
 
+    /** Applies an event-only role; the member's saved base role remains intact. */
+    public static CompletableFuture<Void> setTemporaryTeamRank(UUID memberId, TeamRank rank) {
+        JsonObject body = new JsonObject();
+        body.addProperty("rank", rank.id());
+        return post("/team/members/" + memberId + "/event-rank", body).thenApply(ignored -> (Void) null);
+    }
+
     /** Sends one message to the private MPSQ Team chat. */
     public static CompletableFuture<Void> sendTeamMessage(String message) {
         JsonObject body = new JsonObject();
