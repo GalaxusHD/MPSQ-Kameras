@@ -295,20 +295,34 @@ public final class MpsqApiClient {
             for (JsonElement element : json.getAsJsonArray()) {
                 JsonObject row = element.getAsJsonObject();
                 todos.add(new TeamTodo(UUID.fromString(row.get("id").getAsString()), row.get("text").getAsString(),
-                        row.has("done") && row.get("done").getAsBoolean()));
+                        TeamTodoList.fromId(row.has("list_key") ? row.get("list_key").getAsString() : "arbeiter"), false));
             }
             return todos;
         });
     }
 
-    public static CompletableFuture<Void> addTeamTodo(String text) {
-        JsonObject body = new JsonObject(); body.addProperty("text", text);
+    public static CompletableFuture<Void> addTeamTodo(String text, TeamTodoList list) {
+        JsonObject body = new JsonObject(); body.addProperty("text", text); body.addProperty("listKey", list.id());
         return post("/team/todos", body).thenApply(ignored -> (Void) null);
     }
 
-    public static CompletableFuture<Void> toggleTeamTodo(UUID id, boolean done) {
-        JsonObject body = new JsonObject(); body.addProperty("done", done);
+    /** Legacy overload retained for the unused generic board screen. */
+    public static CompletableFuture<Void> addTeamTodo(String text) {
+        return addTeamTodo(text, TeamTodoList.WORKER);
+    }
+
+    public static CompletableFuture<Void> updateTeamTodo(UUID id, String text, TeamTodoList list) {
+        JsonObject body = new JsonObject(); body.addProperty("text", text); body.addProperty("listKey", list.id());
         return patch("/team/todos/" + id, body).thenApply(ignored -> (Void) null);
+    }
+
+    public static CompletableFuture<Void> deleteTeamTodo(UUID id) {
+        return delete("/team/todos/" + id).thenApply(ignored -> (Void) null);
+    }
+
+    /** Completion state is local to TeamTodoScreen and intentionally not persisted. */
+    public static CompletableFuture<Void> toggleTeamTodo(UUID id, boolean done) {
+        return CompletableFuture.completedFuture(null);
     }
 
     public static CompletableFuture<TeamTimerState> loadTeamTimer() {

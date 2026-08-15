@@ -105,7 +105,7 @@ public class ModConfigScreen extends Screen {
     private void openScreens() { client.setScreen(new BildschirmListScreen(this)); }
     private void openCameras() { client.setScreen(new CameraListScreen(this)); }
     private void openSettings() { client.setScreen(new ModSettingsScreen(this)); }
-    private void openTodo() { client.setScreen(new TeamBoardScreen(this, TeamBoardScreen.Mode.TODO)); }
+    private void openTodo() { client.setScreen(new TeamTodoScreen(this)); }
     private void openTemplates() { client.setScreen(new TeamBoardScreen(this, TeamBoardScreen.Mode.TEMPLATES)); }
     private void openMembers() { client.setScreen(new TeamMembersScreen(this)); }
     private void openLicense() { client.setScreen(new LizenzScreen(this)); }

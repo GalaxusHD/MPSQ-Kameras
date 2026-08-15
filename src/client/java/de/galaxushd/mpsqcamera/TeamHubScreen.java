@@ -27,7 +27,7 @@ public final class TeamHubScreen extends Screen {
         boolean canManageEvent = rank.level() >= TeamRank.OFFICER.level();
         addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.team.members"), b -> client.setScreen(new TeamMembersScreen(this)))
                 .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT).build()).active = available;
-        addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.team.todo"), b -> client.setScreen(new TeamBoardScreen(this, TeamBoardScreen.Mode.TODO)))
+        addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.team.todo"), b -> client.setScreen(new TeamTodoScreen(this)))
                 .dimensions(x, y += BUTTON_HEIGHT + GAP, BUTTON_WIDTH, BUTTON_HEIGHT).build()).active = available || canEditTodos;
         addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.team.timer"), b -> client.setScreen(new TeamBoardScreen(this, TeamBoardScreen.Mode.TIMER)))
                 .dimensions(x, y += BUTTON_HEIGHT + GAP, BUTTON_WIDTH, BUTTON_HEIGHT).build()).active = available || canManageEvent;

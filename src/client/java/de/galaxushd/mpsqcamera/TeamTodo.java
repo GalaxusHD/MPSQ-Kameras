@@ -2,5 +2,5 @@ package de.galaxushd.mpsqcamera;
 
 import java.util.UUID;
 
-/** One shared, persisted event task. */
-public record TeamTodo(UUID id, String text, boolean done) { }
+/** One centrally stored task. Completion ticks deliberately stay local. */
+public record TeamTodo(UUID id, String text, TeamTodoList list, boolean done) { }
