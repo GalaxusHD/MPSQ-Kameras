@@ -57,10 +57,10 @@
   "gui.mpsqcamera.team.ready": "Verbunden",
   "gui.mpsqcamera.team.unavailable": "Teamdienst nicht erreichbar",
   "gui.mpsqcamera.team.chat": "Teamchat",
-  "gui.mpsqcamera.team.members": "Mitglieder & Ränge",
-  "gui.mpsqcamera.team.todo": "To-do-Liste",
+  "gui.mpsqcamera.team.members": "Ränge",
+  "gui.mpsqcamera.team.todo": "To-dos",
   "gui.mpsqcamera.team.timer": "Timer",
-  "gui.mpsqcamera.team.templates": "Textspeicher",
+  "gui.mpsqcamera.team.templates": "Texte",
   "gui.mpsqcamera.team.members.loading": "Mitglieder werden geladen...",
   "gui.mpsqcamera.team.members.help": "Person auswählen, danach erlaubten Rang anklicken.",
   "gui.mpsqcamera.team.members.choose": "Rang für %s",
@@ -78,4 +78,7 @@
   "gui.mpsqcamera.team.timer.input": "Sekunden, optional Text",
   "gui.mpsqcamera.team.timer.idle": "Timer nicht aktiv",
   "gui.mpsqcamera.team.timer.running": "Timer läuft"
+  ,"gui.mpsqcamera.team.visibility.on": "MPSQ: AN"
+  ,"gui.mpsqcamera.team.visibility.off": "MPSQ: AUS"
+  ,"gui.mpsqcamera.team.camera_usage": "%s nutzt %s"
 }

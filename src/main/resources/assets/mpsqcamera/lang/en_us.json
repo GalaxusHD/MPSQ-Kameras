@@ -78,4 +78,7 @@
   "gui.mpsqcamera.team.timer.input": "Seconds, optional text",
   "gui.mpsqcamera.team.timer.idle": "Timer inactive",
   "gui.mpsqcamera.team.timer.running": "Timer running"
+  ,"gui.mpsqcamera.team.visibility.on": "MPSQ: ON"
+  ,"gui.mpsqcamera.team.visibility.off": "MPSQ: OFF"
+  ,"gui.mpsqcamera.team.camera_usage": "%s uses %s"
 }
