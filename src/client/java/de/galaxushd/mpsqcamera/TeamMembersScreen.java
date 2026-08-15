@@ -19,7 +19,9 @@ public final class TeamMembersScreen extends Screen {
     private static final int MAX_CONTENT_WIDTH = 720;
     private static final int PAGE_MARGIN = 12;
     private static final int LIST_TOP = 78;
-    private static final int RIGHT_COLUMN_TOP = LIST_TOP + 20;
+    // Halfway between the original position and the previous collision-safe
+    // position: visually tighter, while still below the help text.
+    private static final int RIGHT_COLUMN_TOP = LIST_TOP + 10;
     private static final int RANK_X_GAP = 28;
     private static final int TAG_HEIGHT = 9;
     private static final int TAG_SPACING = 7;
