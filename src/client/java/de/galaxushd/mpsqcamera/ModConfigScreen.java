@@ -59,9 +59,8 @@ public class ModConfigScreen extends Screen {
         // Keep the Ränge entry available while a staff member temporarily
         // uses the 001 event rank, so it can be removed again.
         TeamRank baseTeamRank = TeamStateStore.self().map(TeamProfile::baseRank).orElse(TeamRank.PLAYER);
-        boolean canSeeMembers = baseTeamRank.level() >= TeamRank.SOLDIER.level();
         boolean isOfficerOrHigher = baseTeamRank.level() >= TeamRank.OFFICER.level();
-        if (canSeeMembers) {
+        {
             // From the bottom upwards: Lizenz → Ränge → Todos → Texte.
             // This keeps the related team controls in the requested reading
             // order while leaving the normal licence button untouched.
@@ -75,7 +74,7 @@ public class ModConfigScreen extends Screen {
             teamButtonY -= BUTTON_HEIGHT + BUTTON_SPACING;
             addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.team.templates"), button -> openTemplates())
                     .dimensions(LICENSE_MARGIN, teamButtonY, LICENSE_WIDTH, BUTTON_HEIGHT).build());
-        } else if (!canSeeMembers) {
+        } else if (baseTeamRank.level() < TeamRank.SOLDIER.level()) {
             addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.team.todo"), button -> openTodo())
                     .dimensions(LICENSE_MARGIN, teamButtonY, LICENSE_WIDTH, BUTTON_HEIGHT).build());
         }

@@ -228,6 +228,14 @@ public final class MpsqApiClient {
         return delete("/team/me/event-rank").thenApply(ignored -> (Void) null);
     }
 
+    /**
+     * Removes a temporary 001 rank.  The API permits this for the member
+     * itself, or for the Sr Offizier when another member is selected.
+     */
+    public static CompletableFuture<Void> clearUndercoverRank(UUID memberId) {
+        return delete("/team/members/" + memberId + "/event-rank").thenApply(ignored -> (Void) null);
+    }
+
     /** Sends one message to the private MPSQ Team chat. */
     public static CompletableFuture<Void> sendTeamMessage(String message) {
         JsonObject body = new JsonObject();
