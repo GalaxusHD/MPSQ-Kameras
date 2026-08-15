@@ -24,7 +24,7 @@ public class ModKeybindsScreen extends Screen {
     private KeyBinding pendingRebind = null;
 
     public ModKeybindsScreen(Screen parent) {
-        super(Text.literal("Tastenbelegung – MPSQ Kameras"));
+        super(Text.literal("Tastenbelegung – MPSQ Team"));
         this.parent = parent;
     }
 

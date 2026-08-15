@@ -11,8 +11,9 @@ public final class TeamCommandManager {
 
     public static void initialize() {
         ClientSendMessageEvents.ALLOW_COMMAND.register(command -> {
-            if (command.regionMatches(true, 0, "p kick ", 0, 7)) {
-                String target = command.substring(7).trim().split("\\s+", 2)[0];
+            String normalized = command.startsWith("/") ? command.substring(1) : command;
+            if (normalized.regionMatches(true, 0, "p kick ", 0, 7)) {
+                String target = normalized.substring(7).trim().split("\\s+", 2)[0];
                 TeamStateStore.self().ifPresent(profile -> {
                     if (profile.canOpenTeamArea() && !target.isBlank()) {
                         JsonObject body = new JsonObject();
@@ -22,8 +23,8 @@ public final class TeamCommandManager {
                 });
                 return true;
             }
-            if (!command.equalsIgnoreCase("mpsq") && !command.regionMatches(true, 0, "mpsq ", 0, 5)) return true;
-            String message = command.length() > 5 ? command.substring(5).trim() : "";
+            if (!normalized.equalsIgnoreCase("mpsq") && !normalized.regionMatches(true, 0, "mpsq ", 0, 5)) return true;
+            String message = normalized.length() > 5 ? normalized.substring(5).trim() : "";
             MinecraftClient client = MinecraftClient.getInstance();
             if (message.isEmpty()) {
                 if (client.player != null) client.player.sendMessage(Text.translatable("gui.mpsqcamera.team.command.usage"), true);

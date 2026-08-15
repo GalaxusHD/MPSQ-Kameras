@@ -34,21 +34,22 @@ import java.util.concurrent.CompletableFuture;
  * caused camera jumps, hand artefacts and broken freecam movement.</p>
  */
 public final class RemoteCameraFrameManager {
-    // A 960 x 540 texture upload is far more expensive than a normal HUD
-    // update. Ten FPS keeps the remote view convincingly live without making
-    // either the source player or the viewer hitch every few frames.
-    private static final long FRAME_INTERVAL_MS = 100L;
+    // Capturing a framebuffer forces a GPU read-back. At ten 540p frames per
+    // second this noticeably stalls the player who operates the camera,
+    // particularly while a direct R2 upload is also active. Five FPS at 360p
+    // remains sufficiently live for an in-world monitor while keeping camera
+    // movement responsive.
+    private static final long FRAME_INTERVAL_MS = 200L;
     // A bodycam is captured from its wearer's normal game render. Capturing it
     // Bodycams use the same live rate as a static camera. The expensive image
     // transformation is performed asynchronously further below, so the wearer
     // does not pay the PNG-processing cost in the render tick.
-    private static final long BODYCAM_INTERVAL_MS = 100L;
-    // 540p keeps the 16:9 image much sharper on large in-world screens while
-    // remaining realistic for a live PNG transfer.
+    private static final long BODYCAM_INTERVAL_MS = 200L;
+    // 360p halves the PNG and texture-upload work compared with 540p.
     // The actual send rate remains bounded by the completed upload, so a slow
     // connection cannot queue an unlimited number of screenshots.
-    private static final int STREAM_WIDTH = 960;
-    private static final int STREAM_HEIGHT = 540;
+    private static final int STREAM_WIDTH = 640;
+    private static final int STREAM_HEIGHT = 360;
     private static final HttpClient HTTP = HttpClient.newHttpClient();
     private static final Map<UUID, Identifier> TEXTURE_IDS = new ConcurrentHashMap<>();
     private static final Map<UUID, NativeImageBackedTexture> TEXTURES = new ConcurrentHashMap<>();
@@ -62,6 +63,7 @@ public final class RemoteCameraFrameManager {
     private static UUID providerCamera;
     private static Runnable snapshotCompleteCallback;
     private static long lastPublishMs;
+    private static long lastPresenceMs;
     private static long lastBodycamRefreshMs;
     private static long lastBodycamPublishMs;
     private static boolean publishing;
@@ -78,6 +80,7 @@ public final class RemoteCameraFrameManager {
     public static void startPublishing(UUID cameraId) {
         providerCamera = cameraId;
         lastPublishMs = 0L;
+        lastPresenceMs = System.currentTimeMillis();
         announceCamera(cameraId, "start");
     }
 
@@ -119,6 +122,10 @@ public final class RemoteCameraFrameManager {
         synchronized (OWN_BODYCAMS) { hasBodycams = !OWN_BODYCAMS.isEmpty(); }
         if ((providerCamera == null && !hasBodycams) || publishing || client.getFramebuffer() == null) return;
         long now = System.currentTimeMillis();
+        if (providerCamera != null && now - lastPresenceMs >= 5_000L) {
+            lastPresenceMs = now;
+            announceCamera(providerCamera, "start");
+        }
         long interval = providerCamera != null ? FRAME_INTERVAL_MS : BODYCAM_INTERVAL_MS;
         if (now - lastPublishMs < interval) return;
         if (providerCamera == null && now - lastBodycamPublishMs < BODYCAM_INTERVAL_MS) return;
@@ -263,18 +270,14 @@ public final class RemoteCameraFrameManager {
                 ? result.getAsJsonObject().get("expiresIn").getAsLong() : 60L;
         // Renew before the signed Storage URL reaches its expiry.
         FRAME_URLS.put(cameraId, url);
-        // Storage frames use one fixed filename. Request a newly signed URL at
-        // least once per second, which gives each download a fresh valid URL
-        // without breaking its signature by adding custom query parameters.
-        FRAME_URL_EXPIRY_MS.put(cameraId, System.currentTimeMillis() + 1_000L);
-        return downloadFrame(url).handle((image, error) -> {
-            if (error == null) {
-                return CompletableFuture.completedFuture(image);
-            }
-            invalidateFrameUrl(cameraId);
-            return MpsqApiClient.get("/cameras/" + cameraId + "/frame?inline=1")
-                    .thenApply(RemoteCameraFrameManager::decodeInlineFrame);
-        }).thenCompose(frame -> frame);
+        // R2 provides a longer-lived direct link.  The actual frame bytes do
+        // not pass through Supabase; only this small permission check is
+        // renewed occasionally.
+        FRAME_URL_EXPIRY_MS.put(cameraId, System.currentTimeMillis()
+                + Math.max(10L, validForSeconds - 15L) * 1_000L);
+        return downloadFrame(url).whenComplete((ignored, error) -> {
+            if (error != null) invalidateFrameUrl(cameraId);
+        });
     }
 
     private static NativeImage decodeInlineFrame(JsonElement result) {

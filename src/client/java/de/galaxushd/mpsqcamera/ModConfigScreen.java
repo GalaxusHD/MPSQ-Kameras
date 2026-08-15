@@ -50,8 +50,35 @@ public class ModConfigScreen extends Screen {
                 .dimensions(menuX, nextControlY(menuTop, 4), buttonWidth, BUTTON_HEIGHT).build());
         addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.hauptmenu.lizenz"), button -> openLicense())
                 .dimensions(LICENSE_MARGIN, height - LICENSE_MARGIN - BUTTON_HEIGHT, LICENSE_WIDTH, BUTTON_HEIGHT).build());
-        addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.team.open"), button -> openTeam())
-                .dimensions(LICENSE_MARGIN, height - LICENSE_MARGIN - BUTTON_HEIGHT * 2 - BUTTON_SPACING, LICENSE_WIDTH, BUTTON_HEIGHT).build());
+        addDrawableChild(ButtonWidget.builder(visibilityButtonText(), button -> {
+                    TeamVisibilitySettings.toggle();
+                    button.setMessage(visibilityButtonText());
+                })
+                .dimensions(width - LICENSE_MARGIN - LICENSE_WIDTH, height - LICENSE_MARGIN - BUTTON_HEIGHT, LICENSE_WIDTH, BUTTON_HEIGHT).build());
+        int teamButtonY = height - LICENSE_MARGIN - BUTTON_HEIGHT * 2 - BUTTON_SPACING;
+        // Keep the Ränge entry available while a staff member temporarily
+        // uses the 001 event rank, so it can be removed again.
+        TeamRank baseTeamRank = TeamStateStore.self().map(TeamProfile::baseRank).orElse(TeamRank.PLAYER);
+        boolean canSeeMembers = baseTeamRank.level() >= TeamRank.SOLDIER.level();
+        boolean isOfficerOrHigher = baseTeamRank.level() >= TeamRank.OFFICER.level();
+        if (canSeeMembers) {
+            // From the bottom upwards: Lizenz → Ränge → Todos → Texte.
+            // This keeps the related team controls in the requested reading
+            // order while leaving the normal licence button untouched.
+            addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.team.members"), button -> openMembers())
+                    .dimensions(LICENSE_MARGIN, teamButtonY, LICENSE_WIDTH, BUTTON_HEIGHT).build());
+            teamButtonY -= BUTTON_HEIGHT + BUTTON_SPACING;
+        }
+        if (isOfficerOrHigher) {
+            addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.team.todo"), button -> openTodo())
+                    .dimensions(LICENSE_MARGIN, teamButtonY, LICENSE_WIDTH, BUTTON_HEIGHT).build());
+            teamButtonY -= BUTTON_HEIGHT + BUTTON_SPACING;
+            addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.team.templates"), button -> openTemplates())
+                    .dimensions(LICENSE_MARGIN, teamButtonY, LICENSE_WIDTH, BUTTON_HEIGHT).build());
+        } else if (!canSeeMembers) {
+            addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.team.todo"), button -> openTodo())
+                    .dimensions(LICENSE_MARGIN, teamButtonY, LICENSE_WIDTH, BUTTON_HEIGHT).build());
+        }
         updateActivationCodeState();
     }
 
@@ -79,8 +106,12 @@ public class ModConfigScreen extends Screen {
     private void openScreens() { client.setScreen(new BildschirmListScreen(this)); }
     private void openCameras() { client.setScreen(new CameraListScreen(this)); }
     private void openSettings() { client.setScreen(new ModSettingsScreen(this)); }
-    private void openTeam() { client.setScreen(new TeamHubScreen(this)); }
+    private void openTodo() { client.setScreen(new TeamBoardScreen(this, TeamBoardScreen.Mode.TODO)); }
+    private void openTemplates() { client.setScreen(new TeamBoardScreen(this, TeamBoardScreen.Mode.TEMPLATES)); }
+    private void openMembers() { client.setScreen(new TeamMembersScreen(this)); }
     private void openLicense() { client.setScreen(new LizenzScreen(this)); }
+    private Text visibilityButtonText() { return Text.translatable(TeamVisibilitySettings.visible()
+            ? "gui.mpsqcamera.team.visibility.on" : "gui.mpsqcamera.team.visibility.off"); }
 
     @Override public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) { context.fillGradient(0, 0, width, height, 0xCC1A1A1A, 0xCC050505); }
     @Override public void render(DrawContext context, int mouseX, int mouseY, float delta) {

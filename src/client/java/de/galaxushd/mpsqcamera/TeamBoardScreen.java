@@ -87,7 +87,7 @@ public final class TeamBoardScreen extends Screen {
 
     @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (mode == Mode.TODO && canEdit()) {
-            int y = 52;
+            int y = 70;
             for (TeamTodo todo : todos) {
                 if (mouseY >= y && mouseY < y + 18 && mouseX >= width / 2 - WIDTH / 2 && mouseX <= width / 2 + WIDTH / 2) {
                     MpsqApiClient.toggleTeamTodo(todo.id(), !todo.done()).whenComplete((v, error) -> client.execute(this::reload));
@@ -107,15 +107,16 @@ public final class TeamBoardScreen extends Screen {
         super.render(context, mouseX, mouseY, delta);
         int left = width / 2 - WIDTH / 2;
         context.drawCenteredTextWithShadow(textRenderer, title, width / 2, 24, MpsqTheme.TEXT_TITEL);
-        context.drawTextWithShadow(textRenderer, canEdit() ? Text.translatable("gui.mpsqcamera.team.editable") : Text.translatable("gui.mpsqcamera.team.readonly"), left, 38, MpsqTheme.TEXT_GEDAEMPT);
+        context.fill(left, 45, left + WIDTH, 47, MpsqTheme.TEXT_GEDAEMPT);
+        context.drawTextWithShadow(textRenderer, canEdit() ? Text.translatable("gui.mpsqcamera.team.editable") : Text.translatable("gui.mpsqcamera.team.readonly"), left, 52, MpsqTheme.TEXT_GEDAEMPT);
         if (mode == Mode.TODO) drawTodos(context, left);
         else if (mode == Mode.TIMER) drawTimer(context, left);
         else drawTemplates(context, left);
-        if (!status.isEmpty()) context.drawTextWithShadow(textRenderer, status, left + WIDTH - 18, 38, status.equals("OK") ? 0x55FF55 : 0xFF5555);
+        if (!status.isEmpty()) context.drawTextWithShadow(textRenderer, status, left + WIDTH - 18, 52, status.equals("OK") ? 0x55FF55 : 0xFF5555);
     }
 
     private void drawTodos(DrawContext context, int left) {
-        int y = 54;
+        int y = 70;
         for (TeamTodo todo : todos) {
             context.fill(left, y, left + WIDTH, y + 17, todo.done() ? 0x44335533 : 0x66000000);
             String prefix = todo.done() ? "[x] " : "[ ] ";
@@ -136,7 +137,7 @@ public final class TeamBoardScreen extends Screen {
     }
 
     private void drawTemplates(DrawContext context, int left) {
-        int y = 54;
+        int y = 70;
         for (TeamTemplate template : templates) {
             context.fill(left, y, left + WIDTH, y + 17, 0x66000000);
             context.drawTextWithShadow(textRenderer, template.text(), left + 5, y + 5, MpsqTheme.TEXT_NORMAL);

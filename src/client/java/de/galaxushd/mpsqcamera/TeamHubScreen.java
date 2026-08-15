@@ -25,10 +25,8 @@ public final class TeamHubScreen extends Screen {
         boolean available = rank.level() >= TeamRank.UNDERCOVER_001.level();
         boolean canEditTodos = rank.level() >= TeamRank.WORKER.level();
         boolean canManageEvent = rank.level() >= TeamRank.OFFICER.level();
-        addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.team.chat"), b -> client.setScreen(new TeamChatScreen(this)))
-                .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT).build()).active = available;
         addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.team.members"), b -> client.setScreen(new TeamMembersScreen(this)))
-                .dimensions(x, y += BUTTON_HEIGHT + GAP, BUTTON_WIDTH, BUTTON_HEIGHT).build()).active = available;
+                .dimensions(x, y, BUTTON_WIDTH, BUTTON_HEIGHT).build()).active = available;
         addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.team.todo"), b -> client.setScreen(new TeamBoardScreen(this, TeamBoardScreen.Mode.TODO)))
                 .dimensions(x, y += BUTTON_HEIGHT + GAP, BUTTON_WIDTH, BUTTON_HEIGHT).build()).active = available || canEditTodos;
         addDrawableChild(ButtonWidget.builder(Text.translatable("gui.mpsqcamera.team.timer"), b -> client.setScreen(new TeamBoardScreen(this, TeamBoardScreen.Mode.TIMER)))
@@ -53,6 +51,7 @@ public final class TeamHubScreen extends Screen {
     @Override public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
         context.drawCenteredTextWithShadow(textRenderer, title, width / 2, 28, MpsqTheme.TEXT_TITEL);
+        context.fill(width / 2 - 135, 45, width / 2 + 135, 47, MpsqTheme.TEXT_GEDAEMPT);
         TeamStateStore.self().ifPresent(profile -> {
             int tagHeight = 14;
             int tagWidth = profile.displayedRank().widthForHeight(tagHeight);

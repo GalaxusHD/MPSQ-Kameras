@@ -15,11 +15,11 @@ public class LizenzScreen extends Screen {
 
     // Vollständiger Lizenztext
     private static final String[] LIZENZ_ZEILEN = {
-        "MPSQ Kameras – Nutzungsbedingungen",
+        "MPSQ Team – Nutzungsbedingungen",
         "",
         "Version: 1.0",
         "",
-        "Diese Modifikation (\"MPSQ Kameras\") wurde ausschließlich für das",
+        "Diese Modifikation (\"MPSQ Team\") wurde ausschließlich für das",
         "MixelPixel Squid Game Team entwickelt.",
         "",
         "1. Nutzung",
@@ -48,7 +48,7 @@ public class LizenzScreen extends Screen {
         "Mit der Nutzung dieser Mod erkennen alle Nutzer diese",
         "Nutzungsbedingungen an.",
         "",
-        "© MPSQ Kameras",
+        "© MPSQ Team",
     };
 
     public LizenzScreen(Screen parent) {

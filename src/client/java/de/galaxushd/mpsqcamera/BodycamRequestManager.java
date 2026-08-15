@@ -21,7 +21,9 @@ public final class BodycamRequestManager {
     /** Sends a bodycam request for the player currently looked at by the requester. */
     public static void request(MinecraftClient client, PlayerEntity target) {
         if (client.player == null || target == client.player) return;
-        String playerName = target.getName().getString().trim();
+        // The visible name can contain a server rank such as "ULTRA". The
+        // game profile name is the actual Minecraft name saved by MPSQ Team.
+        String playerName = target.getGameProfile().getName().trim();
         if (playerName.isBlank()) return;
 
         JsonObject body = new JsonObject();

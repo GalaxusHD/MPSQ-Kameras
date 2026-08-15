@@ -3,6 +3,7 @@ package de.galaxushd.mpsqcamera;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
@@ -20,9 +21,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
 
 /** HTTP access to the public MPSQ Edge Function. No Supabase secret is stored in the mod. */
@@ -31,6 +33,11 @@ public final class MpsqApiClient {
     private static final Path TOKEN_FILE = FabricLoader.getInstance().getConfigDir().resolve("mpsqcamera-token.txt");
     private static final HttpClient HTTP = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     private static final Gson GSON = new Gson();
+    // R2 write links are issued by the authenticated API but the actual PNG
+    // bytes bypass Supabase entirely.  This cache limits URL requests to one
+    // per camera per minute instead of one Edge Function call per frame.
+    private static final Map<UUID, String> FRAME_UPLOAD_URLS = new ConcurrentHashMap<>();
+    private static final Map<UUID, Long> FRAME_UPLOAD_URL_EXPIRY_MS = new ConcurrentHashMap<>();
     private static String token;
 
     private MpsqApiClient() { }
@@ -62,11 +69,42 @@ public final class MpsqApiClient {
     public static CompletableFuture<JsonElement> patch(String path, JsonObject body) { return request("PATCH", path, body, true); }
     public static CompletableFuture<JsonElement> delete(String path) { return request("DELETE", path, null, true); }
 
-    /** Uploads one low-rate PNG frame for a camera currently viewed by this client. */
+    /** Uploads one frame directly to R2 using a short-lived, camera-scoped URL. */
     public static CompletableFuture<JsonElement> postCameraFrame(UUID cameraId, byte[] png) {
-        JsonObject body = new JsonObject();
-        body.addProperty("pngBase64", Base64.getEncoder().encodeToString(png));
-        return post("/cameras/" + cameraId + "/frame", body);
+        return frameUploadUrl(cameraId).thenCompose(url -> {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+                    .timeout(Duration.ofSeconds(15))
+                    .header("Content-Type", "image/png")
+                    .PUT(HttpRequest.BodyPublishers.ofByteArray(png))
+                    .build();
+            return HTTP.sendAsync(request, HttpResponse.BodyHandlers.discarding()).thenApply(response -> {
+                if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                    FRAME_UPLOAD_URLS.remove(cameraId);
+                    FRAME_UPLOAD_URL_EXPIRY_MS.remove(cameraId);
+                    throw new IllegalStateException("R2-Frame-Upload fehlgeschlagen (HTTP " + response.statusCode() + ")");
+                }
+                return JsonNull.INSTANCE;
+            });
+        });
+    }
+
+    private static CompletableFuture<String> frameUploadUrl(UUID cameraId) {
+        long now = System.currentTimeMillis();
+        String cached = FRAME_UPLOAD_URLS.get(cameraId);
+        if (cached != null && now < FRAME_UPLOAD_URL_EXPIRY_MS.getOrDefault(cameraId, 0L)) {
+            return CompletableFuture.completedFuture(cached);
+        }
+        return post("/cameras/" + cameraId + "/frame-upload-url", new JsonObject()).thenApply(result -> {
+            JsonObject object = result.getAsJsonObject();
+            if (!object.has("url")) throw new IllegalStateException("MPSQ-API lieferte keine R2-Upload-URL");
+            String url = object.get("url").getAsString();
+            long lifetime = object.has("expiresIn") ? object.get("expiresIn").getAsLong() : 60L;
+            // Renew well before expiry so an in-flight frame cannot reach a
+            // link that has just expired.
+            FRAME_UPLOAD_URLS.put(cameraId, url);
+            FRAME_UPLOAD_URL_EXPIRY_MS.put(cameraId, System.currentTimeMillis() + Math.max(10L, lifetime - 15L) * 1_000L);
+            return url;
+        });
     }
 
     /** Cameras whose wearer is this client. Their wearer publishes a bodycam frame. */
@@ -166,9 +204,20 @@ public final class MpsqApiClient {
     public static CompletableFuture<Void> changeTeamRank(UUID memberId, TeamRank rank) {
         JsonObject body = new JsonObject();
         body.addProperty("rank", rank.id());
-        // 001 remains a small self-managed event role. Every other rank is
-        // only a request: the protected website must approve it first.
-        if (rank != TeamRank.UNDERCOVER_001) {
+        // Only Offizier and Frontman are confirmation-protected. All other
+        // changes are still checked authoritatively by the API.
+        boolean removesLeadership = TeamStateStore.members().stream()
+                .filter(member -> member.id().equals(memberId))
+                .map(TeamProfile::baseRank)
+                .anyMatch(current -> current == TeamRank.OFFICER || current == TeamRank.FRONTMAN);
+        // The Sr Offizier is the trusted root role. Its rank changes are applied
+        // immediately; every other role must still create an approval request
+        // for an Offizier/Frontman promotion or demotion.
+        boolean isSeniorOfficer = TeamStateStore.self()
+                .map(TeamProfile::permissionRank)
+                .map(current -> current == TeamRank.SENIOR_OFFICER)
+                .orElse(false);
+        if (!isSeniorOfficer && (rank == TeamRank.OFFICER || rank == TeamRank.FRONTMAN || removesLeadership)) {
             body.addProperty("targetId", memberId.toString());
             return post("/team/rank-requests", body).thenApply(ignored -> (Void) null);
         }
@@ -192,12 +241,35 @@ public final class MpsqApiClient {
             if (!json.isJsonArray()) return messages;
             for (JsonElement element : json.getAsJsonArray()) {
                 JsonObject row = element.getAsJsonObject();
+                String senderName = row.has("sender_name") ? row.get("sender_name").getAsString() : "MPSQ Team";
+                String senderRank = row.has("sender_rank") ? row.get("sender_rank").getAsString() : "spieler";
+                String message = row.has("message") ? row.get("message").getAsString() : "";
+                // Older deployed API versions do not yet include the database ID.
+                // created_at is stable, unlike a generated UUID on every poll.
+                String stableId = row.has("id") ? row.get("id").getAsString()
+                        : row.has("created_at") ? row.get("created_at").getAsString()
+                        : senderName + "\\u0000" + senderRank + "\\u0000" + message;
                 messages.add(new TeamChatMessage(
-                        row.has("sender_name") ? row.get("sender_name").getAsString() : "MPSQ Team",
-                        TeamRank.fromId(row.has("sender_rank") ? row.get("sender_rank").getAsString() : "spieler"),
-                        row.has("message") ? row.get("message").getAsString() : ""));
+                        stableId,
+                        senderName,
+                        TeamRank.fromId(senderRank),
+                        message));
             }
             return messages;
+        });
+    }
+
+    public static CompletableFuture<List<CameraUsage>> loadCameraUsage() {
+        return get("/team/camera-events").thenApply(json -> {
+            List<CameraUsage> usages = new ArrayList<>();
+            if (!json.isJsonArray()) return usages;
+            for (JsonElement element : json.getAsJsonArray()) {
+                JsonObject row = element.getAsJsonObject();
+                usages.add(new CameraUsage(
+                        row.has("viewer_name") ? row.get("viewer_name").getAsString() : "Unbekannt",
+                        row.has("camera_name") ? row.get("camera_name").getAsString() : "Kamera"));
+            }
+            return usages;
         });
     }
 

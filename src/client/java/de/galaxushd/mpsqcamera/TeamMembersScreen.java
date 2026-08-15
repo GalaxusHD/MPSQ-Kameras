@@ -6,11 +6,15 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /** Role list and image-based promotion controls. Server-side checks remain authoritative. */
 public final class TeamMembersScreen extends Screen {
     private static final int ROW_HEIGHT = 24;
+    private static final int LIST_WIDTH = 210;
+    private static final int LIST_TOP = 78;
+    private static final int RANK_X_GAP = 15;
     private final Screen parent;
     private TeamProfile selected;
     private String messageKey = "gui.mpsqcamera.team.members.loading";
@@ -41,28 +45,31 @@ public final class TeamMembersScreen extends Screen {
 
     @Override public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
-        int left = width / 2 - 154;
+        int left = width / 2 - 230;
         context.drawCenteredTextWithShadow(textRenderer, title, width / 2, 24, MpsqTheme.TEXT_TITEL);
-        context.drawTextWithShadow(textRenderer, Text.translatable(messageKey), left, 44, MpsqTheme.TEXT_GEDAEMPT);
-        int y = 62;
-        for (TeamProfile member : TeamStateStore.members()) {
+        context.fill(left, 45, left + LIST_WIDTH + 260, 47, MpsqTheme.TEXT_GEDAEMPT);
+        context.drawTextWithShadow(textRenderer, Text.translatable(messageKey), left, 54, MpsqTheme.TEXT_GEDAEMPT);
+        int y = LIST_TOP;
+        for (TeamProfile member : sortedMembers()) {
             boolean isSelected = member.equals(selected);
-            context.fill(left, y, left + 145, y + ROW_HEIGHT - 2, isSelected ? 0x88557A9B : 0x66000000);
-            member.displayedRank().draw(context, left + 4, y + 5, 12);
-            int nameX = left + 10 + member.displayedRank().widthForHeight(12);
+            context.fill(left, y, left + LIST_WIDTH, y + ROW_HEIGHT - 2, isSelected ? 0x88557A9B : 0x66000000);
+            int tagHeight = 8;
+            member.displayedRank().draw(context, left + 4, y + 8, tagHeight);
+            int nameX = left + 10 + member.displayedRank().widthForHeight(tagHeight);
             context.drawTextWithShadow(textRenderer, member.displayName(), nameX, y + 8, MpsqTheme.TEXT_NORMAL);
             y += ROW_HEIGHT;
         }
-        renderRankChoices(context, left + 162, 62);
+        renderRankChoices(context, left + LIST_WIDTH + RANK_X_GAP, LIST_TOP + 30);
     }
 
     private void renderRankChoices(DrawContext context, int x, int y) {
         if (selected == null) return;
         context.drawTextWithShadow(textRenderer, Text.translatable("gui.mpsqcamera.team.members.choose", selected.displayName()), x, y - 18, MpsqTheme.TEXT_NORMAL);
         for (TeamRank rank : allowedRanks()) {
-            int tagHeight = 14;
-            int w = rank.widthForHeight(tagHeight);
-            context.fill(x - 3, y - 3, x + w + 3, y + tagHeight + 3, 0x66000000);
+            int tagHeight = 9;
+            // The rank artwork already contains its complete visual design.
+            // Keep the hit area in mouseClicked, but do not paint a dark button
+            // or shadow behind the image.
             rank.draw(context, x, y, tagHeight);
             y += tagHeight + 7;
         }
@@ -77,29 +84,36 @@ public final class TeamMembersScreen extends Screen {
         TeamProfile self = TeamStateStore.self().orElse(null);
         if (self == null) return List.of();
         if (self.permissionRank() == TeamRank.SENIOR_OFFICER) {
-            return List.of(TeamRank.VIP, TeamRank.PLAYER, TeamRank.UNDERCOVER_001, TeamRank.SOLDIER, TeamRank.WORKER, TeamRank.OFFICER, TeamRank.FRONTMAN);
+            return List.of(TeamRank.PLAYER, TeamRank.VIP, TeamRank.UNDERCOVER_001, TeamRank.WORKER, TeamRank.SOLDIER, TeamRank.OFFICER, TeamRank.FRONTMAN);
         }
         if (self.permissionRank() == TeamRank.OFFICER || self.permissionRank() == TeamRank.FRONTMAN) {
             return selected.displayedRank().level() <= TeamRank.WORKER.level()
-                    ? List.of(TeamRank.VIP, TeamRank.PLAYER, TeamRank.UNDERCOVER_001, TeamRank.SOLDIER, TeamRank.WORKER) : List.of();
+                    ? List.of(TeamRank.PLAYER, TeamRank.VIP, TeamRank.UNDERCOVER_001, TeamRank.WORKER, TeamRank.SOLDIER) : List.of();
         }
-        if ((self.baseRank() == TeamRank.SOLDIER || self.baseRank() == TeamRank.WORKER)
-                && selected.id().equals(self.id())) return List.of(TeamRank.UNDERCOVER_001);
+        // The 001 rank is a reversible event disguise. Every actual staff
+        // rank (Arbeiter, Soldat, Offizier, Frontman and Sr Offizier) may
+        // enable it for itself; it can never be assigned to another member.
+        boolean mayUseOwn001 = self.baseRank() == TeamRank.WORKER
+                || self.baseRank() == TeamRank.SOLDIER
+                || self.baseRank() == TeamRank.OFFICER
+                || self.baseRank() == TeamRank.FRONTMAN
+                || self.baseRank() == TeamRank.SENIOR_OFFICER;
+        if (mayUseOwn001 && selected.id().equals(self.id())) return List.of(TeamRank.UNDERCOVER_001);
         return List.of();
     }
 
     @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        int left = width / 2 - 154;
-        int y = 62;
-        for (TeamProfile member : TeamStateStore.members()) {
-            if (mouseX >= left && mouseX <= left + 145 && mouseY >= y && mouseY < y + ROW_HEIGHT - 2) { selected = member; return true; }
+        int left = width / 2 - 230;
+        int y = LIST_TOP;
+        for (TeamProfile member : sortedMembers()) {
+            if (mouseX >= left && mouseX <= left + LIST_WIDTH && mouseY >= y && mouseY < y + ROW_HEIGHT - 2) { selected = member; return true; }
             y += ROW_HEIGHT;
         }
         if (selected != null) {
-            int x = left + 162;
-            y = 62;
+            int x = left + LIST_WIDTH + RANK_X_GAP;
+            y = LIST_TOP + 30;
             for (TeamRank rank : allowedRanks()) {
-                int h = 14, w = rank.widthForHeight(h);
+                int h = 9, w = rank.widthForHeight(h);
                 if (mouseX >= x - 3 && mouseX <= x + w + 3 && mouseY >= y - 3 && mouseY <= y + h + 3) {
                     MpsqApiClient.changeTeamRank(selected.id(), rank).whenComplete((v, error) -> client.execute(this::reload));
                     return true;
@@ -116,4 +130,11 @@ public final class TeamMembersScreen extends Screen {
     }
 
     @Override public boolean shouldPause() { return false; }
+
+    private List<TeamProfile> sortedMembers() {
+        return TeamStateStore.members().stream()
+                .sorted(Comparator.comparingInt((TeamProfile value) -> value.displayedRank().level()).reversed()
+                        .thenComparing(TeamProfile::displayName, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+    }
 }

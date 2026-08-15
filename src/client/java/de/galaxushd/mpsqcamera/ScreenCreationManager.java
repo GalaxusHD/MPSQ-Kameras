@@ -560,7 +560,7 @@ public final class ScreenCreationManager {
 		if (!isHoldingToolItem(player)) return;
 
 		if (client.crosshairTarget == null || client.crosshairTarget.getType() != HitResult.Type.BLOCK) {
-			MpsqCameraClient.LOGGER.info("[MPSQ Kameras] Kein Block anvisiert.");
+			MpsqCameraClient.LOGGER.info("[MPSQ Team] Kein Block anvisiert.");
 			return;
 		}
 
@@ -580,7 +580,7 @@ public final class ScreenCreationManager {
 			selectionSide = hit.getSide();
 			player.sendMessage(
 					Text.translatable("gui.mpsqcamera.auswahl.pos1_gesetzt"), true);
-			MpsqCameraClient.LOGGER.info("[MPSQ Kameras] Pos 1 markiert: {}", selectionPos1);
+			MpsqCameraClient.LOGGER.info("[MPSQ Team] Pos 1 markiert: {}", selectionPos1);
 		} else {
 			// ── Zweiter Klick: Endpunkt → automatisch bestätigen & Menü öffnen
 			BlockPos pos1 = selectionPos1;
@@ -589,7 +589,7 @@ public final class ScreenCreationManager {
 			selectionPos1 = null; // Auswahl-Modus beenden
 			selectionSide = null;
 
-			MpsqCameraClient.LOGGER.info("[MPSQ Kameras] Pos 2 markiert: {} → Erstell-Menü öffnen", pos2);
+			MpsqCameraClient.LOGGER.info("[MPSQ Team] Pos 2 markiert: {} → Erstell-Menü öffnen", pos2);
 			client.setScreen(new BildschirmErstellenScreen(pos1, pos2, side));
 		}
 	}

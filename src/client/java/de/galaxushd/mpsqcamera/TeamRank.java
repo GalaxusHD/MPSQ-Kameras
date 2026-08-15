@@ -2,6 +2,7 @@ package de.galaxushd.mpsqcamera;
 
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 
 /** Shared MPSQ Team roles. The order is the permission order, not a public leaderboard. */
@@ -31,6 +32,15 @@ public enum TeamRank {
     public String id() { return id; }
     public String label() { return label; }
     public int level() { return level; }
+    /** Colour used for the normal Minecraft chat name, not for the rank image. */
+    public Formatting chatColor() {
+        return switch (this) {
+            case UNDERCOVER_001, VIP -> Formatting.GOLD;
+            case SOLDIER, WORKER, OFFICER -> Formatting.RED;
+            case FRONTMAN, SENIOR_OFFICER -> Formatting.DARK_GRAY;
+            case PLAYER -> Formatting.AQUA;
+        };
+    }
     public Identifier texture() { return Identifier.of(MpsqCameraClient.MOD_ID, "textures/gui/ranks/" + id + ".png"); }
     public int widthForHeight(int height) { return Math.max(1, textureWidth * height / TEXTURE_HEIGHT); }
 
