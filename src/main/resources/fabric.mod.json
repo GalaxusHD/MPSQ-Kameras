@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "mpsqcamera",
+  "id": "mpsqteam",
   "version": "${version}",
   "name": "MPSQ Team",
   "description": "MPSQ Team client: cameras, screens, ranks and event coordination.",
@@ -16,11 +16,11 @@
   "environment": "client",
   "entrypoints": {
     "client": [
-      "de.galaxushd.mpsqcamera.MpsqCameraClient"
+      "de.galaxushd.mpsqcamera.MpsqTeamClient"
     ]
   },
   "mixins": [
-    "mpsqcamera.mixins.json"
+    "mpsqteam.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.17.3",
