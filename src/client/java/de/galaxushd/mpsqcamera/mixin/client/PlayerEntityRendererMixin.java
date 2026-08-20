@@ -1,12 +1,16 @@
 package de.galaxushd.mpsqcamera.mixin.client;
 
 import de.galaxushd.mpsqcamera.TeamProfile;
+import de.galaxushd.mpsqcamera.MpsqCameraClient;
 import de.galaxushd.mpsqcamera.TeamStateStore;
 import de.galaxushd.mpsqcamera.TeamVisibilitySettings;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
+import net.minecraft.text.Style;
+import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
@@ -14,20 +18,16 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 /** Replaces a server-provided prefix locally for MPSQ Team users. */
 @Mixin(net.minecraft.client.render.entity.PlayerEntityRenderer.class)
 public abstract class PlayerEntityRendererMixin {
-    /**
-     * PlayerEntityRenderer receives the final server nameplate as its only Text
-     * argument. Replacing that argument at method entry removes every server
-     * prefix (for example "ULTRA") in one place before Minecraft renders it.
-     */
-    @ModifyVariable(
-            method = "renderLabelIfPresent(Lnet/minecraft/client/render/entity/state/PlayerEntityRenderState;Lnet/minecraft/text/Text;Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;I)V",
-            at = @At("HEAD"),
-            argsOnly = true,
-            ordinal = 0
-    )
+    private static final Identifier MPSQ_RANK_FONT = Identifier.of(MpsqCameraClient.MOD_ID, "ranks");
+
+    @ModifyVariable(method = "renderLabelIfPresent", at = @At("HEAD"), argsOnly = true)
     private Text mpsq$replaceServerRank(
             Text original,
-            PlayerEntityRenderState state
+            PlayerEntityRenderState state,
+            Text renderedText,
+            MatrixStack matrices,
+            VertexConsumerProvider consumers,
+            int light
     ) {
         if (!TeamVisibilitySettings.visible()) return original;
         // Some servers pass the complete server label here (for example
@@ -42,12 +42,28 @@ public abstract class PlayerEntityRendererMixin {
                         || matchesProfileName(value.displayName(), originalName))
                 .findFirst().orElse(null);
         if (profile == null) return original;
-        // Deliberately build an entirely new label.  Appending to "original"
-        // would preserve the server's rank prefix and causes tags such as
-        // "ULTRA" to remain visible.
-        return Text.literal("[" + profile.displayedRank().label() + "] ")
-                .formatted(profile.displayedRank().chatColor())
-                .append(Text.literal(profile.displayName()).formatted(net.minecraft.util.Formatting.WHITE));
+        return Text.literal(rankGlyph(profile.displayedRank()))
+                .setStyle(Style.EMPTY.withFont(MPSQ_RANK_FONT).withColor(Formatting.WHITE))
+                .append(Text.literal(" "))
+                .append(Text.literal(profile.displayName()).formatted(Formatting.WHITE));
+    }
+
+    /**
+     * The glyphs are bitmap entries in assets/mpsqcamera/font/ranks.json.  Using
+     * Minecraft's normal text renderer lets the icon appear in every 3D name
+     * label without relying on the server's resource-pack rank characters.
+     */
+    private static String rankGlyph(de.galaxushd.mpsqcamera.TeamRank rank) {
+        return switch (rank) {
+            case VIP -> "\ue001";
+            case PLAYER -> "\ue002";
+            case UNDERCOVER_001 -> "\ue003";
+            case SOLDIER -> "\ue004";
+            case WORKER -> "\ue005";
+            case OFFICER -> "\ue006";
+            case FRONTMAN -> "\ue007";
+            case SENIOR_OFFICER -> "\ue008";
+        };
     }
 
     private static boolean matchesProfileName(String profileName, String renderedName) {
