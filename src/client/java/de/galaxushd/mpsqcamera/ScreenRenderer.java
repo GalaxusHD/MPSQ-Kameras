@@ -6,6 +6,7 @@ import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
@@ -67,11 +68,15 @@ public final class ScreenRenderer {
             if (cameraScreen && activeCamera == null) {
                 activeCamera = screen.cameraId();
             }
-            Identifier texture = cameraScreen
-                    ? RemoteCameraFrameManager.texture(activeCamera)
-                    : CinemaBrowserManager.texture(screen.id());
+            boolean blockedCamera = cameraScreen && LocalCameraStore.find(activeCamera)
+                    .map(cameraData -> CameraSafety.isStaticCameraBlocked(MinecraftClient.getInstance(), cameraData))
+                    .orElse(false);
+            Identifier texture = cameraScreen && blockedCamera
+                    ? null
+                    : (cameraScreen ? RemoteCameraFrameManager.texture(activeCamera) : CinemaBrowserManager.texture(screen.id()));
             CinemaBrowserManager.ScreenStatus screenStatus = cameraScreen
-                    ? (texture == null ? CinemaBrowserManager.ScreenStatus.OFFLINE : CinemaBrowserManager.ScreenStatus.NONE)
+                    ? (blockedCamera ? CinemaBrowserManager.ScreenStatus.BLOCKED
+                    : (texture == null ? CinemaBrowserManager.ScreenStatus.OFFLINE : CinemaBrowserManager.ScreenStatus.NONE))
                     : CinemaBrowserManager.status(screen);
 
             drawScreenFace(

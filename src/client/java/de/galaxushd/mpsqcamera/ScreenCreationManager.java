@@ -244,6 +244,10 @@ public final class ScreenCreationManager {
 			sendOfflineHint(player);
 			return;
 		}
+		if (CameraSafety.isStaticCameraBlocked(client, cameraScreen.get())) {
+			sendBlockedHint(player);
+			return;
+		}
 
 		Vec3d cameraPos = cameraPosition(client, cameraScreen.get());
 		if (!isCameraAreaLoadedByAnyPlayer(client, cameraPos)) {
@@ -255,6 +259,14 @@ public final class ScreenCreationManager {
 		long now = System.currentTimeMillis();
 		if (now - lastOfflineHintMs >= OFFLINE_HINT_INTERVAL_MS) {
 			player.sendMessage(Text.translatable("status.mpsqcamera.camera_offline"), true);
+			lastOfflineHintMs = now;
+		}
+	}
+
+	private static void sendBlockedHint(ClientPlayerEntity player) {
+		long now = System.currentTimeMillis();
+		if (now - lastOfflineHintMs >= OFFLINE_HINT_INTERVAL_MS) {
+			player.sendMessage(Text.translatable("status.mpsqcamera.camera_blocked"), true);
 			lastOfflineHintMs = now;
 		}
 	}
@@ -275,6 +287,10 @@ public final class ScreenCreationManager {
 		LocalCameraStore.CameraData cameraScreen = LocalCameraStore.find(cameraId).orElse(null);
 		if (cameraScreen == null || cameraPosition(client, cameraScreen) == null) {
 			sendOfflineHint(player);
+			return;
+		}
+		if (CameraSafety.isStaticCameraBlocked(client, cameraScreen)) {
+			sendBlockedHint(player);
 			return;
 		}
 

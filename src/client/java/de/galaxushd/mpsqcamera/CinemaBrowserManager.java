@@ -249,6 +249,7 @@ public final class CinemaBrowserManager {
         NONE("", 0, 0, 0),
         NO_LINK("KEIN LINK", 140, 140, 140),
         OFFLINE("OFFLINE", 155, 155, 155),
+        BLOCKED("BLOCKIERT", 210, 60, 55),
         LOADING("LAEDT", 225, 180, 55),
         ERROR("FEHLER", 210, 60, 55);
 

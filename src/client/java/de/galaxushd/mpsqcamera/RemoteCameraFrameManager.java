@@ -118,6 +118,16 @@ public final class RemoteCameraFrameManager {
     private static void captureProviderFrame() {
         MinecraftClient client = MinecraftClient.getInstance();
         refreshMyBodycams();
+        if (providerCamera != null && LocalCameraStore.find(providerCamera)
+                .map(camera -> CameraSafety.isStaticCameraBlocked(client, camera)).orElse(false)) {
+            // Never encode or upload a frame that was captured through terrain.
+            if (snapshotCompleteCallback != null) {
+                finishSnapshot();
+            } else {
+                stopPublishing();
+            }
+            return;
+        }
         boolean hasBodycams;
         synchronized (OWN_BODYCAMS) { hasBodycams = !OWN_BODYCAMS.isEmpty(); }
         if ((providerCamera == null && !hasBodycams) || publishing || client.getFramebuffer() == null) return;
