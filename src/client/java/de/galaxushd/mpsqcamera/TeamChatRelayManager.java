@@ -55,7 +55,7 @@ public final class TeamChatRelayManager {
 
     private static Text format(TeamChatMessage message) {
         MutableText text = Text.literal("<").formatted(Formatting.DARK_GRAY)
-                .append(Text.literal("MPSQ").formatted(Formatting.RED))
+                .append(Text.literal("MPSQ").formatted(Formatting.DARK_RED, Formatting.BOLD))
                 .append(Text.literal("> ").formatted(Formatting.DARK_GRAY));
         String content = message.message();
         if (content.equalsIgnoreCase(message.senderName())) content = "";
@@ -64,6 +64,6 @@ public final class TeamChatRelayManager {
         if (content.matches("(?i).+ wurde disqualifiziert\\.")) return text.append(Text.literal(content).formatted(Formatting.WHITE));
         text.append(Text.literal(message.senderName()).formatted(message.senderRank().chatColor()));
         text.append(Text.literal(": ").formatted(Formatting.GRAY));
-        return text.append(Text.literal(content).formatted(Formatting.WHITE));
+        return text.append(TeamChatText.fromAmpersandCodes(content, Formatting.WHITE));
     }
 }

@@ -24,10 +24,14 @@ public final class TeamCommandManager {
                 return true;
             }
             if (!normalized.equalsIgnoreCase("mpsq") && !normalized.regionMatches(true, 0, "mpsq ", 0, 5)) return true;
-            String message = normalized.length() > 5 ? normalized.substring(5).trim() : "";
+            String message = TeamChatPolicy.prepare(normalized.length() > 5 ? normalized.substring(5) : "");
             MinecraftClient client = MinecraftClient.getInstance();
             if (message.isEmpty()) {
                 if (client.player != null) client.player.sendMessage(Text.translatable("gui.mpsqcamera.team.command.usage"), true);
+                return false;
+            }
+            if (TeamChatPolicy.containsForbiddenContent(message)) {
+                if (client.player != null) client.player.sendMessage(Text.translatable("gui.mpsqcamera.team.command.filtered"), true);
                 return false;
             }
             TeamStateStore.self().ifPresentOrElse(profile -> {

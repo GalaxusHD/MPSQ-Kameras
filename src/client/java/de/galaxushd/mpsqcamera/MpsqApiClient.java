@@ -236,17 +236,14 @@ public final class MpsqApiClient {
         return delete("/team/members/" + memberId + "/event-rank").thenApply(ignored -> (Void) null);
     }
 
-    /** Applies an event-only role; the member's saved base role remains intact. */
-    public static CompletableFuture<Void> setTemporaryTeamRank(UUID memberId, TeamRank rank) {
-        JsonObject body = new JsonObject();
-        body.addProperty("rank", rank.id());
-        return post("/team/members/" + memberId + "/event-rank", body).thenApply(ignored -> (Void) null);
-    }
-
     /** Sends one message to the private MPSQ Team chat. */
     public static CompletableFuture<Void> sendTeamMessage(String message) {
+        String prepared = TeamChatPolicy.prepare(message);
+        if (TeamChatPolicy.containsForbiddenContent(prepared)) {
+            return CompletableFuture.failedFuture(new IllegalArgumentException("FILTERED"));
+        }
         JsonObject body = new JsonObject();
-        body.addProperty("message", message);
+        body.addProperty("message", prepared);
         return post("/team/chat", body).thenApply(ignored -> (Void) null);
     }
 
@@ -295,34 +292,20 @@ public final class MpsqApiClient {
             for (JsonElement element : json.getAsJsonArray()) {
                 JsonObject row = element.getAsJsonObject();
                 todos.add(new TeamTodo(UUID.fromString(row.get("id").getAsString()), row.get("text").getAsString(),
-                        TeamTodoList.fromId(row.has("list_key") ? row.get("list_key").getAsString() : "arbeiter"), false));
+                        row.has("done") && row.get("done").getAsBoolean()));
             }
             return todos;
         });
     }
 
-    public static CompletableFuture<Void> addTeamTodo(String text, TeamTodoList list) {
-        JsonObject body = new JsonObject(); body.addProperty("text", text); body.addProperty("listKey", list.id());
+    public static CompletableFuture<Void> addTeamTodo(String text) {
+        JsonObject body = new JsonObject(); body.addProperty("text", text);
         return post("/team/todos", body).thenApply(ignored -> (Void) null);
     }
 
-    /** Legacy overload retained for the unused generic board screen. */
-    public static CompletableFuture<Void> addTeamTodo(String text) {
-        return addTeamTodo(text, TeamTodoList.WORKER);
-    }
-
-    public static CompletableFuture<Void> updateTeamTodo(UUID id, String text, TeamTodoList list) {
-        JsonObject body = new JsonObject(); body.addProperty("text", text); body.addProperty("listKey", list.id());
-        return patch("/team/todos/" + id, body).thenApply(ignored -> (Void) null);
-    }
-
-    public static CompletableFuture<Void> deleteTeamTodo(UUID id) {
-        return delete("/team/todos/" + id).thenApply(ignored -> (Void) null);
-    }
-
-    /** Completion state is local to TeamTodoScreen and intentionally not persisted. */
     public static CompletableFuture<Void> toggleTeamTodo(UUID id, boolean done) {
-        return CompletableFuture.completedFuture(null);
+        JsonObject body = new JsonObject(); body.addProperty("done", done);
+        return patch("/team/todos/" + id, body).thenApply(ignored -> (Void) null);
     }
 
     public static CompletableFuture<TeamTimerState> loadTeamTimer() {

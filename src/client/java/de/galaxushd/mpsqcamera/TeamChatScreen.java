@@ -31,8 +31,16 @@ public final class TeamChatScreen extends Screen {
 
     private void reload() { MpsqApiClient.loadTeamMessages().whenComplete((rows, error) -> { if (error == null) client.execute(() -> messages = rows); }); }
     private void send() {
-        String message = input.getText().trim(); if (message.isEmpty()) return;
-        MpsqApiClient.sendTeamMessage(message).whenComplete((v, error) -> client.execute(() -> { if (error == null) { input.setText(""); reload(); } }));
+        String message = TeamChatPolicy.prepare(input.getText());
+        if (message.isEmpty()) return;
+        if (TeamChatPolicy.containsForbiddenContent(message)) {
+            if (client.player != null) client.player.sendMessage(Text.translatable("gui.mpsqcamera.team.command.filtered"), true);
+            return;
+        }
+        MpsqApiClient.sendTeamMessage(message).whenComplete((v, error) -> client.execute(() -> {
+            if (error == null) { input.setText(""); reload(); }
+            else if (client.player != null) client.player.sendMessage(Text.translatable("gui.mpsqcamera.team.command.failed"), true);
+        }));
     }
 
     @Override public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
@@ -49,7 +57,9 @@ public final class TeamChatScreen extends Screen {
             TeamChatMessage message = messages.get(i);
             message.senderRank().draw(context, width / 2 - 145, y + 1, 12);
             int x = width / 2 - 139 + message.senderRank().widthForHeight(12);
-            context.drawTextWithShadow(textRenderer, message.senderName() + ": " + message.message(), x, y + 4, MpsqTheme.TEXT_NORMAL);
+            context.drawTextWithShadow(textRenderer,
+                    Text.literal(message.senderName() + ": ").append(TeamChatText.fromAmpersandCodes(message.message(), net.minecraft.util.Formatting.WHITE)),
+                    x, y + 4, MpsqTheme.TEXT_NORMAL);
             y += 18;
         }
     }
