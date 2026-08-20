@@ -21,6 +21,7 @@
     "status.mpsqcamera.view_enter":  "Kameraansich aktiv (ESC zom Beende)",
     "status.mpsqcamera.view_exit":  "Kameraansich beendet",
     "status.mpsqcamera.camera_offline":  "Kamera es nit jelaade",
+    "status.mpsqcamera.camera_blocked": "Kamera es von enem Block verdeck",
     "gui.mpsqcamera.hauptmenu.titel":  "MPSQ Team",
     "gui.mpsqcamera.hauptmenu.logo_platzhalter":  "[ Logo ]",
     "gui.mpsqcamera.hauptmenu.zugangscode":  "Zugangscode",

@@ -21,6 +21,7 @@
     "status.mpsqcamera.view_enter":  "Vue caméra active (ÉCHAP pour quitter)",
     "status.mpsqcamera.view_exit":  "Vue caméra fermée",
     "status.mpsqcamera.camera_offline":  "La caméra n\u0027est pas chargée",
+    "status.mpsqcamera.camera_blocked": "La caméra est bloquée par un bloc solide",
     "gui.mpsqcamera.hauptmenu.titel":  "MPSQ Team",
     "gui.mpsqcamera.hauptmenu.logo_platzhalter":  "[ Logo ]",
     "gui.mpsqcamera.hauptmenu.zugangscode":  "Access code",

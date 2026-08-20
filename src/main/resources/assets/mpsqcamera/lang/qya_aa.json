@@ -21,6 +21,7 @@
     "status.mpsqcamera.view_enter":  "Cenda cenë quanta (ESC paita)",
     "status.mpsqcamera.view_exit":  "Cenda cenë mentë",
     "status.mpsqcamera.camera_offline":  "Cenda lá naitë",
+    "status.mpsqcamera.camera_blocked": "Cenda ná ambarië ná",
     "gui.mpsqcamera.hauptmenu.titel":  "MPSQ Team",
     "gui.mpsqcamera.hauptmenu.logo_platzhalter":  "[ Logo ]",
     "gui.mpsqcamera.hauptmenu.zugangscode":  "Access code",

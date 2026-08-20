@@ -21,6 +21,7 @@
     "status.mpsqcamera.view_enter":  "Visio camerae activa (ESC ad exeundum)",
     "status.mpsqcamera.view_exit":  "Visio camerae finita est",
     "status.mpsqcamera.camera_offline":  "Camera non est onerata",
+    "status.mpsqcamera.camera_blocked": "Camera a solido bloco obtegitur",
     "gui.mpsqcamera.hauptmenu.titel":  "MPSQ Team",
     "gui.mpsqcamera.hauptmenu.logo_platzhalter":  "[ Logo ]",
     "gui.mpsqcamera.hauptmenu.zugangscode":  "Access code",

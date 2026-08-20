@@ -21,6 +21,7 @@
     "status.mpsqcamera.view_enter":  "Cam eyes active (ESC to leave)",
     "status.mpsqcamera.view_exit":  "Cam eyes closed",
     "status.mpsqcamera.camera_offline":  "Cam iz not loaded",
+    "status.mpsqcamera.camera_blocked": "Cam iz blockd by solid blok",
     "gui.mpsqcamera.hauptmenu.titel":  "MPSQ Team",
     "gui.mpsqcamera.hauptmenu.logo_platzhalter":  "[ Logo ]",
     "gui.mpsqcamera.hauptmenu.zugangscode":  "Access code",

@@ -21,6 +21,7 @@
     "status.mpsqcamera.view_enter":  "Cameraweergave actief (ESC om te stoppen)",
     "status.mpsqcamera.view_exit":  "Cameraweergave gestopt",
     "status.mpsqcamera.camera_offline":  "Camera is nie geladen",
+    "status.mpsqcamera.camera_blocked": "Camera is in en Block",
     "gui.mpsqcamera.hauptmenu.titel":  "MPSQ Team",
     "gui.mpsqcamera.hauptmenu.logo_platzhalter":  "[ Logo ]",
     "gui.mpsqcamera.hauptmenu.zugangscode":  "Access code",

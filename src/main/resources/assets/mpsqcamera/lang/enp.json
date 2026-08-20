@@ -21,6 +21,7 @@
     "status.mpsqcamera.view_enter":  "Watcher sight active (ESC to leave)",
     "status.mpsqcamera.view_exit":  "Watcher sight ended",
     "status.mpsqcamera.camera_offline":  "Watcher is not loaded",
+    "status.mpsqcamera.camera_blocked": "Watcher be blocked by solid block",
     "gui.mpsqcamera.hauptmenu.titel":  "MPSQ Team",
     "gui.mpsqcamera.hauptmenu.logo_platzhalter":  "[ Logo ]",
     "gui.mpsqcamera.hauptmenu.zugangscode":  "Access code",

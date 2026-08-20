@@ -21,6 +21,7 @@
     "status.mpsqcamera.view_enter":  "Vista telecamera attiva (ESC per uscire)",
     "status.mpsqcamera.view_exit":  "Vista telecamera chiusa",
     "status.mpsqcamera.camera_offline":  "La telecamera non è caricata",
+    "status.mpsqcamera.camera_blocked": "La telecamera è bloccata da un blocco solido",
     "gui.mpsqcamera.hauptmenu.titel":  "MPSQ Team",
     "gui.mpsqcamera.hauptmenu.logo_platzhalter":  "[ Logo ]",
     "gui.mpsqcamera.hauptmenu.zugangscode":  "Access code",
