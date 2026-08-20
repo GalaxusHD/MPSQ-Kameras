@@ -74,6 +74,7 @@
   "gui.mpsqcamera.team.command.denied": "You do not have team-chat access.",
   "gui.mpsqcamera.team.command.sent": "Team message sent.",
   "gui.mpsqcamera.team.command.failed": "Could not send team message.",
+  "gui.mpsqcamera.team.command.filtered": "This message could not be sent because it contains inappropriate words.",
   "gui.mpsqcamera.team.input": "Enter text",
   "gui.mpsqcamera.team.add": "Add",
   "gui.mpsqcamera.team.editable": "Editing allowed",

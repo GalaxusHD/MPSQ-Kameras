@@ -74,6 +74,7 @@
   "gui.mpsqcamera.team.command.denied": "Du hast keinen Zugriff auf den Teamchat.",
   "gui.mpsqcamera.team.command.sent": "Teamnachricht gesendet.",
   "gui.mpsqcamera.team.command.failed": "Teamnachricht konnte nicht gesendet werden.",
+  "gui.mpsqcamera.team.command.filtered": "Diese Nachricht konnte nicht abgesendet werden, da in ihr böse Wörter stecken.",
   "gui.mpsqcamera.team.input": "Text eingeben",
   "gui.mpsqcamera.team.add": "Hinzufügen",
   "gui.mpsqcamera.team.editable": "Bearbeiten erlaubt",
