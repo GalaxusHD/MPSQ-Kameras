@@ -236,6 +236,13 @@ public final class MpsqApiClient {
         return delete("/team/members/" + memberId + "/event-rank").thenApply(ignored -> (Void) null);
     }
 
+    /** Assigns an allowed temporary event rank (normally 001) through the API. */
+    public static CompletableFuture<Void> setTemporaryTeamRank(UUID memberId, TeamRank rank) {
+        JsonObject body = new JsonObject();
+        body.addProperty("rank", rank.id());
+        return post("/team/members/" + memberId + "/event-rank", body).thenApply(ignored -> (Void) null);
+    }
+
     /** Sends one message to the private MPSQ Team chat. */
     public static CompletableFuture<Void> sendTeamMessage(String message) {
         String prepared = TeamChatPolicy.prepare(message);
@@ -291,21 +298,44 @@ public final class MpsqApiClient {
             if (!json.isJsonArray()) return todos;
             for (JsonElement element : json.getAsJsonArray()) {
                 JsonObject row = element.getAsJsonObject();
+                String listKey = row.has("list_key") && !row.get("list_key").isJsonNull()
+                        ? row.get("list_key").getAsString() : "arbeiter";
+                // Completion checkboxes are intentionally local-only. The
+                // backend stores the shared task and its list, never a check.
                 todos.add(new TeamTodo(UUID.fromString(row.get("id").getAsString()), row.get("text").getAsString(),
-                        row.has("done") && row.get("done").getAsBoolean()));
+                        TeamTodoList.fromId(listKey), false));
             }
             return todos;
         });
     }
 
-    public static CompletableFuture<Void> addTeamTodo(String text) {
-        JsonObject body = new JsonObject(); body.addProperty("text", text);
+    public static CompletableFuture<Void> addTeamTodo(String text, TeamTodoList list) {
+        JsonObject body = new JsonObject();
+        body.addProperty("text", text);
+        body.addProperty("listKey", list.id());
         return post("/team/todos", body).thenApply(ignored -> (Void) null);
     }
 
-    public static CompletableFuture<Void> toggleTeamTodo(UUID id, boolean done) {
-        JsonObject body = new JsonObject(); body.addProperty("done", done);
+    /** Compatibility helper for older call sites. */
+    public static CompletableFuture<Void> addTeamTodo(String text) {
+        return addTeamTodo(text, TeamTodoList.WORKER);
+    }
+
+    public static CompletableFuture<Void> updateTeamTodo(UUID id, String text, TeamTodoList list) {
+        JsonObject body = new JsonObject();
+        body.addProperty("text", text);
+        body.addProperty("listKey", list.id());
         return patch("/team/todos/" + id, body).thenApply(ignored -> (Void) null);
+    }
+
+    public static CompletableFuture<Void> deleteTeamTodo(UUID id) {
+        return delete("/team/todos/" + id).thenApply(ignored -> (Void) null);
+    }
+
+    public static CompletableFuture<Void> toggleTeamTodo(UUID id, boolean done) {
+        // Checkmarks are session-local by design and therefore must not cause
+        // a server request. Screens maintain their own checked-ID set.
+        return CompletableFuture.completedFuture(null);
     }
 
     public static CompletableFuture<TeamTimerState> loadTeamTimer() {
